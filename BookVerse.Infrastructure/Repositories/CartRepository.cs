@@ -14,41 +14,43 @@ public class CartRepository : GenericRepository<Cart>, ICartRepository
         _context = context;
     }
 
-    public async Task<Cart?> GetUserCartAsync(Guid userId)
+    public async Task<Cart?> GetUserCartAsync(Guid userId, CancellationToken cancellationToken)
     {
         return await _dbSet.Include(c => c.CartItems).ThenInclude(ci => ci.Book)
-            .FirstOrDefaultAsync(c => c.UserId == userId);
+            .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken: cancellationToken);
     }
 
-    public async Task<Cart?> GetCartWithItemsAsync(int cartId)
+    public async Task<Cart?> GetCartWithItemsAsync(int cartId, CancellationToken cancellationToken)
     {
         return await _dbSet.Include(c => c.CartItems).ThenInclude(ci => ci.Book)
-            .FirstOrDefaultAsync(c => c.Id == cartId);
+            .FirstOrDefaultAsync(c => c.Id == cartId, cancellationToken: cancellationToken);
     }
 
-    public async Task<CartItem?> GetCartItemAsync(int cartId, int bookId)
+    public async Task<CartItem?> GetCartItemAsync(int cartId, int bookId, CancellationToken cancellationToken)
     {
-        return await _context.CartItems.FirstOrDefaultAsync(ci => ci.CartId == cartId && ci.BookId == bookId);
+        return await _context.CartItems.FirstOrDefaultAsync(ci => ci.CartId == cartId && ci.BookId == bookId,
+            cancellationToken: cancellationToken);
     }
 
-    public async Task AddCartItemAsync(CartItem cartItem)
+    public async Task AddCartItemAsync(CartItem cartItem, CancellationToken cancellationToken)
     {
-        await _context.CartItems.AddAsync(cartItem);
+        await _context.CartItems.AddAsync(cartItem, cancellationToken);
     }
 
-    public void UpdateCartItem(CartItem cartItem)
+    public void UpdateCartItem(CartItem cartItem, CancellationToken cancellationToken)
     {
         _context.CartItems.Update(cartItem);
     }
 
-    public void DeleteCartItem(CartItem cartItem)
+    public void DeleteCartItem(CartItem cartItem, CancellationToken cancellationToken)
     {
         _context.CartItems.Remove(cartItem);
     }
 
-    public async Task ClearCartAsync(int cartId)
+    public async Task ClearCartAsync(int cartId, CancellationToken cancellationToken)
     {
-        var cartItems = await _context.CartItems.Where(ci => ci.CartId == cartId).ToListAsync();
+        var cartItems = await _context.CartItems.Where(ci => ci.CartId == cartId)
+            .ToListAsync(cancellationToken: cancellationToken);
         _context.CartItems.RemoveRange(cartItems);
     }
 }

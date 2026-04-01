@@ -33,7 +33,8 @@ public class OrderController : ControllerBase
     [ProducesResponseType(typeof(OrderReadDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto orderCreateDto)
+    public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto orderCreateDto,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -56,7 +57,7 @@ public class OrderController : ControllerBase
             });
 
 
-        var order = await _orderService.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var order = await _orderService.CreateOrderFromCartAsync(userId, orderCreateDto, cancellationToken);
         return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
     }
 
@@ -66,7 +67,8 @@ public class OrderController : ControllerBase
     [HttpGet("my-orders")]
     [ProducesResponseType(typeof(PagedResult<OrderListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyOrders([FromQuery] QueryParameters parameters)
+    public async Task<IActionResult> GetMyOrders([FromQuery] QueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -76,7 +78,7 @@ public class OrderController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var orders = await _orderService.GetUserOrdersAsync(userId, parameters);
+        var orders = await _orderService.GetUserOrdersAsync(userId, parameters, cancellationToken);
         return Ok(orders);
     }
 
@@ -88,9 +90,10 @@ public class OrderController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<OrderListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetAllOrders([FromQuery] QueryParameters parameters)
+    public async Task<IActionResult> GetAllOrders([FromQuery] QueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        var orders = await _orderService.GetAllOrdersAsync(parameters);
+        var orders = await _orderService.GetAllOrdersAsync(parameters, cancellationToken);
         return Ok(orders);
     }
 
@@ -102,7 +105,7 @@ public class OrderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetOrderById(int id)
+    public async Task<IActionResult> GetOrderById(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -122,7 +125,7 @@ public class OrderController : ControllerBase
         // Check if user is admin
         var isAdmin = User.IsInRole(IdentityRoleConstants.Admin);
 
-        var order = await _orderService.GetOrderByIdAsync(userId, id, isAdmin);
+        var order = await _orderService.GetOrderByIdAsync(userId, id, cancellationToken, isAdmin);
         if (order == null)
             return NotFound(new BasicResponse
             {
@@ -141,7 +144,7 @@ public class OrderController : ControllerBase
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CancelOrder(int id)
+    public async Task<IActionResult> CancelOrder(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -158,7 +161,7 @@ public class OrderController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _orderService.CancelOrderAsync(userId, id);
+        var response = await _orderService.CancelOrderAsync(userId, id, cancellationToken);
         if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
@@ -174,7 +177,8 @@ public class OrderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderUpdateStatusDto updateDto)
+    public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderUpdateStatusDto updateDto,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -195,7 +199,7 @@ public class OrderController : ControllerBase
             });
         }
 
-        var response = await _orderService.UpdateOrderStatusAsync(id, updateDto);
+        var response = await _orderService.UpdateOrderStatusAsync(id, updateDto, cancellationToken);
         if (response.Succeeded) return Ok(response);
 
         return NotFound(response);
@@ -211,7 +215,8 @@ public class OrderController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdatePaymentStatus(int id, [FromBody] PaymentUpdateStatusDto updateDto)
+    public async Task<IActionResult> UpdatePaymentStatus(int id, [FromBody] PaymentUpdateStatusDto updateDto,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -232,7 +237,7 @@ public class OrderController : ControllerBase
             });
         }
 
-        var response = await _orderService.UpdatePaymentStatusAsync(id, updateDto);
+        var response = await _orderService.UpdatePaymentStatusAsync(id, updateDto, cancellationToken);
         if (response.Succeeded) return Ok(response);
 
         return NotFound(response);

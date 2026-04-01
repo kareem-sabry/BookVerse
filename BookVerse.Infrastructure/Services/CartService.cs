@@ -10,7 +10,6 @@ namespace BookVerse.Infrastructure.Services;
 
 public class CartService : ICartService
 {
-    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILogger<CartService> _logger;
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
@@ -21,12 +20,11 @@ public class CartService : ICartService
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
-        _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task<CartDto?> GetCartByUserIdAsync(Guid userId)
+    public async Task<CartDto?> GetCartByUserIdAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
 
         if (cart == null)
         {
@@ -40,23 +38,23 @@ public class CartService : ICartService
         return cartDto;
     }
 
-    public async Task<CartDto> AddToCartAsync(Guid userId, CartItemAdd cartItem)
+    public async Task<CartDto> AddToCartAsync(Guid userId, CartItemAdd cartItem, CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync();
 
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
         if (cart == null)
         {
             cart = new Cart
             {
                 UserId = userId
             };
-            await _unitOfWork.Carts.AddAsync(cart);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.Carts.AddAsync(cart, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Created new cart for user: {UserId}", userId);
         }
 
-        var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId);
+        var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
         if (book == null)
         {
             _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
@@ -72,7 +70,7 @@ public class CartService : ICartService
             throw new InvalidOperationException(ErrorMessages.InsufficientStock);
         }
 
-        var existingCartItem = await _unitOfWork.Carts.GetCartItemAsync(cart.Id, book.Id);
+        var existingCartItem = await _unitOfWork.Carts.GetCartItemAsync(cart.Id, book.Id, cancellationToken);
         if (existingCartItem != null)
         {
             var newQuantity = existingCartItem.Quantity + cartItem.Quantity;
@@ -86,7 +84,7 @@ public class CartService : ICartService
 
             existingCartItem.Quantity = newQuantity;
             existingCartItem.PriceAtAdd = book.Price;
-            _unitOfWork.Carts.UpdateCartItem(existingCartItem);
+            _unitOfWork.Carts.UpdateCartItem(existingCartItem, cancellationToken);
             _logger.LogInformation("Updated cart item for book: {BookId}, new quantity: {Quantity}",
                 cartItem.BookId, newQuantity);
         }
@@ -99,21 +97,22 @@ public class CartService : ICartService
                 Quantity = cartItem.Quantity,
                 PriceAtAdd = book.Price
             };
-            await _unitOfWork.Carts.AddCartItemAsync(newCartItem);
+            await _unitOfWork.Carts.AddCartItemAsync(newCartItem, cancellationToken);
             _logger.LogInformation("Added new cart item for book: {BookId}, quantity: {Quantity}",
                 cartItem.BookId, cartItem.Quantity);
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
 
-        var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id);
+        var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id, cancellationToken);
         return _mapper.Map<CartDto>(updatedCart!);
     }
 
-    public async Task<CartDto?> UpdateCartItemAsync(Guid userId, int cartItemId, CartItemUpdate cartItemUpdate)
+    public async Task<CartDto?> UpdateCartItemAsync(Guid userId, int cartItemId, CartItemUpdate cartItemUpdate,
+        CancellationToken cancellationToken)
     {
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
 
         if (cart == null)
         {
@@ -129,7 +128,7 @@ public class CartService : ICartService
             return null;
         }
 
-        var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId);
+        var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
 
         if (book == null)
         {
@@ -146,18 +145,19 @@ public class CartService : ICartService
 
         cartItem.Quantity = cartItemUpdate.Quantity;
         cartItem.PriceAtAdd = book.Price;
-        _unitOfWork.Carts.UpdateCartItem(cartItem);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Carts.UpdateCartItem(cartItem, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Updated cart item: {CartItemId} to quantity: {Quantity}", cartItemId,
             cartItemUpdate.Quantity);
 
-        var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id);
+        var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id, cancellationToken);
         return _mapper.Map<CartDto>(updatedCart!);
     }
 
-    public async Task<BasicResponse> RemoveCartItemAsync(Guid userId, int cartItemId)
+    public async Task<BasicResponse> RemoveCartItemAsync(Guid userId, int cartItemId,
+        CancellationToken cancellationToken)
     {
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
 
         if (cart == null)
         {
@@ -181,8 +181,8 @@ public class CartService : ICartService
             };
         }
 
-        _unitOfWork.Carts.DeleteCartItem(cartItem);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Carts.DeleteCartItem(cartItem, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Removed cart item: {CartItemId} from user cart: {UserId}", cartItemId, userId);
 
@@ -193,9 +193,9 @@ public class CartService : ICartService
         };
     }
 
-    public async Task<BasicResponse> ClearCartAsync(Guid userId)
+    public async Task<BasicResponse> ClearCartAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
 
         if (cart == null)
         {
@@ -207,8 +207,8 @@ public class CartService : ICartService
             };
         }
 
-        await _unitOfWork.Carts.ClearCartAsync(cart.Id);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Cleared cart for user: {UserId}", userId);
         return new BasicResponse
         {

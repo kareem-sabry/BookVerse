@@ -25,9 +25,9 @@ public class AdminService : IAdminService
         _context = context;
     }
 
-    public async Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync()
+    public async Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync(CancellationToken cancellationToken)
     {
-        var users = await _userManager.Users.ToListAsync();
+        var users = await _userManager.Users.ToListAsync(cancellationToken);
 
         if (!users.Any()) return Enumerable.Empty<UserWithRolesDto>();
 
@@ -38,7 +38,7 @@ public class AdminService : IAdminService
                 ur => ur.RoleId,
                 r => r.Id,
                 (ur, r) => new { ur.UserId, r.Name }
-            ).ToListAsync();
+            ).ToListAsync(cancellationToken);
 
         var rolesByUser = userRoles
             .GroupBy(ur => ur.UserId)

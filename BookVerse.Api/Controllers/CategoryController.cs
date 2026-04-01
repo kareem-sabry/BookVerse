@@ -28,9 +28,10 @@ public class CategoryController : ControllerBase
     [AllowAnonymous]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     [ProducesResponseType(typeof(PagedResult<CategoryListDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCategories([FromQuery] QueryParameters parameters)
+    public async Task<IActionResult> GetCategories([FromQuery] QueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        var categories = await _categoryService.GetPagedAsync(parameters);
+        var categories = await _categoryService.GetPagedAsync(parameters, cancellationToken);
         return Ok(categories);
     }
 
@@ -40,7 +41,8 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(typeof(CategoryReadDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CategoryReadDto>> GetCategoryById(int id)
+    public async Task<ActionResult<CategoryReadDto>> GetCategoryById(int id,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -48,7 +50,7 @@ public class CategoryController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        var category = await _categoryService.GetByIdAsync(id);
+        var category = await _categoryService.GetByIdAsync(id, cancellationToken);
         if (category == null)
             return NotFound(new BasicResponse
             {
@@ -63,7 +65,8 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(typeof(CategoryReadDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<CategoryReadDto>> CreateCategory(CategoryCreateDto categoryDto)
+    public async Task<ActionResult<CategoryReadDto>> CreateCategory(CategoryCreateDto categoryDto,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -78,7 +81,7 @@ public class CategoryController : ControllerBase
             });
         }
 
-        var createdCategory = await _categoryService.CreateAsync(categoryDto);
+        var createdCategory = await _categoryService.CreateAsync(categoryDto, cancellationToken);
         return CreatedAtAction(nameof(GetCategoryById), new { id = createdCategory.Id }, createdCategory);
     }
 
@@ -89,7 +92,8 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateCategory(int id, CategoryUpdateDto categoryDto)
+    public async Task<IActionResult> UpdateCategory(int id, CategoryUpdateDto categoryDto,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -110,7 +114,7 @@ public class CategoryController : ControllerBase
             });
         }
 
-        var updated = await _categoryService.UpdateAsync(id, categoryDto);
+        var updated = await _categoryService.UpdateAsync(id, categoryDto, cancellationToken);
         if (!updated)
             return NotFound(new BasicResponse
             {
@@ -128,7 +132,7 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCategory(int id)
+    public async Task<IActionResult> DeleteCategory(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -136,7 +140,7 @@ public class CategoryController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        var deleted = await _categoryService.DeleteAsync(id);
+        var deleted = await _categoryService.DeleteAsync(id, cancellationToken);
 
         if (!deleted)
             return NotFound(new BasicResponse

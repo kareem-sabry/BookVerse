@@ -8,23 +8,21 @@ namespace BookVerse.Infrastructure.Repositories;
 
 public class OrderRepository : GenericRepository<Order>, IOrderRepository
 {
-    private readonly AppDbContext _context;
-
     public OrderRepository(AppDbContext context) : base(context)
     {
-        _context = context;
     }
 
-    public async Task<Order?> GetOrderWithDetailsAsync(int orderId)
+    public async Task<Order?> GetOrderWithDetailsAsync(int orderId, CancellationToken cancellationToken)
     {
         return await _dbSet
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.Book)
             .Include(o => o.User)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
+            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken: cancellationToken);
     }
 
-    public async Task<PagedResult<Order>> GetUserOrdersAsync(Guid userId, QueryParameters parameters)
+    public async Task<PagedResult<Order>> GetUserOrdersAsync(Guid userId, QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         var query = _dbSet
             .Include(o => o.OrderItems)
@@ -35,22 +33,21 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
                 o.OrderNumber.Contains(parameters.SearchTerm) ||
                 (o.ShippingAddress != null && o.ShippingAddress.Contains(parameters.SearchTerm)));
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
-        else
-            query = query.OrderByDescending(o => o.OrderDate);
+
+        query = query.OrderByDescending(o => o.OrderDate);
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
 
         return new PagedResult<Order>(items, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
-    public async Task<PagedResult<Order>> GetAllOrdersAsync(QueryParameters parameters)
+    public async Task<PagedResult<Order>> GetAllOrdersAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         IQueryable<Order> query = _dbSet
             .Include(o => o.OrderItems)
@@ -67,31 +64,28 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
                 o.User.LastName.Contains(lowerSearchTerm));
         }
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
-        else
-            query = query.OrderByDescending(o => o.OrderDate);
+        query = query.OrderByDescending(o => o.OrderDate);
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
 
         return new PagedResult<Order>(items, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
-    public async Task<Order?> GetUserOrderByIdAsync(Guid userId, int orderId)
+    public async Task<Order?> GetUserOrderByIdAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
         return await _dbSet
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.Book)
-            .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId, cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> OrderExistsForUserAsync(Guid userId, int orderId)
+    public async Task<bool> OrderExistsForUserAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
-        return await _dbSet.AnyAsync(o => o.Id == orderId && o.UserId == userId);
+        return await _dbSet.AnyAsync(o => o.Id == orderId && o.UserId == userId, cancellationToken: cancellationToken);
     }
 }

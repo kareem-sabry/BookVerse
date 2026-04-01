@@ -12,25 +12,26 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     {
     }
 
-    public override async Task<IEnumerable<Book>> GetAllAsync()
+    public override async Task<IEnumerable<Book>> GetAllAsync(CancellationToken cancellationToken)
     {
         return await _dbSet.AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories).ThenInclude(bc => bc.Category)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task<Book?> GetByIdWithDetailsAsync(int id)
+    public async Task<Book?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken)
     {
         return await _dbSet
             .AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category)
-            .FirstOrDefaultAsync(b => b.Id == id);
+            .FirstOrDefaultAsync(b => b.Id == id, cancellationToken: cancellationToken);
     }
 
-    public async Task<PagedResult<Book>> GetPagedWithDetailsAsync(BookQueryParameters parameters)
+    public async Task<PagedResult<Book>> GetPagedWithDetailsAsync(BookQueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         IQueryable<Book> query = _dbSet.AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
@@ -44,64 +45,61 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
         if (!string.IsNullOrWhiteSpace(parameters.SearchTerm)) query = ApplySearch(query, parameters.SearchTerm);
 
         //Get Total count
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
-        //apply Sorting
-        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
-        else
-            //Default Sorting
-            query = query.OrderByDescending(b => b.CreatedAtUtc);
+
+        //Default Sorting
+        query = query.OrderByDescending(b => b.CreatedAtUtc);
 
         //Apply pagination
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
         return new PagedResult<Book>(items, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
-    public async Task<Book?> GetExistingBook(Book book)
+    public async Task<Book?> GetExistingBook(Book book, CancellationToken cancellationToken)
     {
         return await _dbSet
             .AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category)
-            .FirstOrDefaultAsync(b => b.Title == book.Title);
+            .FirstOrDefaultAsync(b => b.Title == book.Title, cancellationToken: cancellationToken);
     }
 
-    public async Task AddBookAuthorAsync(BookAuthor bookAuthor)
+    public async Task AddBookAuthorAsync(BookAuthor bookAuthor, CancellationToken cancellationToken)
     {
-        await _context.BookAuthors.AddAsync(bookAuthor);
+        await _context.BookAuthors.AddAsync(bookAuthor, cancellationToken);
     }
 
-    public async Task AddBookCategoryAsync(BookCategory bookCategory)
+    public async Task AddBookCategoryAsync(BookCategory bookCategory, CancellationToken cancellationToken)
     {
-        await _context.BookCategories.AddAsync(bookCategory);
+        await _context.BookCategories.AddAsync(bookCategory, cancellationToken);
     }
 
-    public async Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId)
+    public async Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookAuthors.Where(ba => ba.BookId == bookId).ToListAsync();
+        return await _context.BookAuthors.Where(ba => ba.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task<List<BookCategory>> GetBookCategoriesAsync(int bookId)
+    public async Task<List<BookCategory>> GetBookCategoriesAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookCategories.Where(bc => bc.BookId == bookId).ToListAsync();
+        return await _context.BookCategories.Where(bc => bc.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors)
+    public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors, CancellationToken cancellationToken)
     {
         _context.BookAuthors.RemoveRange(bookAuthors);
     }
 
-    public void RemoveBookCategories(IEnumerable<BookCategory> bookCategories)
+    public void RemoveBookCategories(IEnumerable<BookCategory> bookCategories, CancellationToken cancellationToken)
     {
         _context.BookCategories.RemoveRange(bookCategories);
     }
 
-    protected override IQueryable<Book> ApplySearch(IQueryable<Book> query, string searchTerm)
+    private IQueryable<Book> ApplySearch(IQueryable<Book> query, string searchTerm)
     {
         return query.Where(b =>
             b.Title.Contains(searchTerm) ||

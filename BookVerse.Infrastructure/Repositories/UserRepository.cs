@@ -14,9 +14,10 @@ public class UserRepository : IUserRepository
         _context = context;
     }
 
-    public async Task<User?> GetUserByRefreshTokenAsync(string refreshToken)
+    public async Task<User?> GetUserByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken,
+            cancellationToken: cancellationToken);
         return user;
     }
 }

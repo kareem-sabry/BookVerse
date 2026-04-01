@@ -29,12 +29,13 @@ public class OrderService : IOrderService
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task<OrderReadDto> CreateOrderFromCartAsync(Guid userId, OrderCreateDto orderCreateDto)
+    public async Task<OrderReadDto> CreateOrderFromCartAsync(Guid userId, OrderCreateDto orderCreateDto,
+        CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync();
 
         // Get user's cart
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId);
+        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
         if (cart == null || !cart.CartItems.Any())
         {
             _logger.LogWarning("Attempted to create order with empty cart for user: {UserId}", userId);
@@ -45,7 +46,7 @@ public class OrderService : IOrderService
         // Validate stock availability for all items
         foreach (var cartItem in cart.CartItems)
         {
-            var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId);
+            var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
             if (book == null)
             {
                 _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
@@ -77,13 +78,13 @@ public class OrderService : IOrderService
             TotalAmount = cart.CartItems.Sum(ci => ci.PriceAtAdd * ci.Quantity)
         };
 
-        await _unitOfWork.Orders.AddAsync(order);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.Orders.AddAsync(order, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
 // Create order items and update book stock
 // Books were already fetched during stock validation; build a lookup to avoid N+1
         var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
-        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id)))
+        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
             .ToDictionary(b => b.Id);
 
         foreach (var cartItem in cart.CartItems)
@@ -96,33 +97,34 @@ public class OrderService : IOrderService
                 PriceAtOrder = cartItem.PriceAtAdd
             };
 
-            await _unitOfWork.OrderItems.AddAsync(orderItem);
+            await _unitOfWork.OrderItems.AddAsync(orderItem, cancellationToken);
 
             // Reduce book stock
             if (books.TryGetValue(cartItem.BookId, out var book))
             {
                 book.QuantityInStock -= cartItem.Quantity;
-                _unitOfWork.Books.Update(book);
+                _unitOfWork.Books.Update(book, cancellationToken);
             }
         }
 
         // Clear the cart
-        await _unitOfWork.Carts.ClearCartAsync(cart.Id);
+        await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
 
         _logger.LogInformation("Order created successfully: {OrderNumber} for user: {UserId}", order.OrderNumber,
             userId);
 
         // Retrieve the complete order with details
-        var createdOrder = await _unitOfWork.Orders.GetOrderWithDetailsAsync(order.Id);
+        var createdOrder = await _unitOfWork.Orders.GetOrderWithDetailsAsync(order.Id, cancellationToken);
         return _mapper.Map<OrderReadDto>(createdOrder!);
     }
 
-    public async Task<PagedResult<OrderListDto>> GetUserOrdersAsync(Guid userId, QueryParameters parameters)
+    public async Task<PagedResult<OrderListDto>> GetUserOrdersAsync(Guid userId, QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
-        var pagedOrders = await _unitOfWork.Orders.GetUserOrdersAsync(userId, parameters);
+        var pagedOrders = await _unitOfWork.Orders.GetUserOrdersAsync(userId, parameters, cancellationToken);
         var orderDtos = _mapper.Map<IEnumerable<OrderListDto>>(pagedOrders.Items);
 
         return new PagedResult<OrderListDto>(
@@ -132,9 +134,10 @@ public class OrderService : IOrderService
             pagedOrders.PageSize);
     }
 
-    public async Task<PagedResult<OrderListDto>> GetAllOrdersAsync(QueryParameters parameters)
+    public async Task<PagedResult<OrderListDto>> GetAllOrdersAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
-        var pagedOrders = await _unitOfWork.Orders.GetAllOrdersAsync(parameters);
+        var pagedOrders = await _unitOfWork.Orders.GetAllOrdersAsync(parameters, cancellationToken);
         var orderDtos = _mapper.Map<IEnumerable<OrderListDto>>(pagedOrders.Items);
 
         return new PagedResult<OrderListDto>(
@@ -144,14 +147,15 @@ public class OrderService : IOrderService
             pagedOrders.PageSize);
     }
 
-    public async Task<OrderReadDto?> GetOrderByIdAsync(Guid userId, int orderId, bool isAdmin = false)
+    public async Task<OrderReadDto?> GetOrderByIdAsync(Guid userId, int orderId,
+        CancellationToken cancellationToken, bool isAdmin = false)
     {
         Order? order;
 
         if (isAdmin)
-            order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId);
+            order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId, cancellationToken);
         else
-            order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId);
+            order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
 
         if (order == null)
         {
@@ -162,11 +166,11 @@ public class OrderService : IOrderService
         return _mapper.Map<OrderReadDto>(order);
     }
 
-    public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId)
+    public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync();
 
-        var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId);
+        var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
@@ -192,11 +196,11 @@ public class OrderService : IOrderService
 
         // Update order status
         order.Status = OrderStatus.Cancelled;
-        _unitOfWork.Orders.Update(order);
+        _unitOfWork.Orders.Update(order, cancellationToken);
 
         // Restore book stock
         var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
-        var booksToRestore = (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id)))
+        var booksToRestore = (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
             .ToDictionary(b => b.Id);
 
         foreach (var orderItem in order.OrderItems)
@@ -204,11 +208,11 @@ public class OrderService : IOrderService
             if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
             {
                 book.QuantityInStock += orderItem.Quantity;
-                _unitOfWork.Books.Update(book);
+                _unitOfWork.Books.Update(book, cancellationToken);
             }
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
 
         _logger.LogInformation("Order cancelled successfully: {OrderId}", orderId);
@@ -220,9 +224,10 @@ public class OrderService : IOrderService
         };
     }
 
-    public async Task<BasicResponse> UpdateOrderStatusAsync(int orderId, OrderUpdateStatusDto updateDto)
+    public async Task<BasicResponse> UpdateOrderStatusAsync(int orderId, OrderUpdateStatusDto updateDto,
+        CancellationToken cancellationToken)
     {
-        var order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId);
+        var order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId, cancellationToken);
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId}", orderId);
@@ -236,8 +241,8 @@ public class OrderService : IOrderService
         order.Status = updateDto.Status;
         if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
 
-        _unitOfWork.Orders.Update(order);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Orders.Update(order, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Order status updated: {OrderId} to {Status}", orderId, updateDto.Status);
 
@@ -248,9 +253,10 @@ public class OrderService : IOrderService
         };
     }
 
-    public async Task<BasicResponse> UpdatePaymentStatusAsync(int orderId, PaymentUpdateStatusDto updateDto)
+    public async Task<BasicResponse> UpdatePaymentStatusAsync(int orderId, PaymentUpdateStatusDto updateDto,
+        CancellationToken cancellationToken)
     {
-        var order = await _unitOfWork.Orders.GetByIdAsync(orderId);
+        var order = await _unitOfWork.Orders.GetByIdAsync(orderId, cancellationToken);
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId}", orderId);
@@ -262,8 +268,8 @@ public class OrderService : IOrderService
         }
 
         order.PaymentStatus = updateDto.PaymentStatus;
-        _unitOfWork.Orders.Update(order);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Orders.Update(order, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Payment status updated: {OrderId} to {Status}", orderId, updateDto.PaymentStatus);
 
