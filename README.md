@@ -349,11 +349,11 @@ MIT License - do whatever you want with it. See the LICENSE file for the legal s
 
 ## Contact
 
-Karem Sabry
+Kareem Sabry
 
-- GitHub: [@karem-sabry](https://github.com/karem-sabry)
-- LinkedIn: [karem-sabry](https://www.linkedin.com/in/karem-sabry/)
-- Email: karemsabry2013@gmail.com
+- GitHub: [@kareem-sabry](https://github.com/kareem-sabry)
+- LinkedIn: [k-sabry](https://www.linkedin.com/in/k-sabry/)
+- Email: kareemsabry.mail@gmail.com
 
 Feel free to reach out if you have questions or just want to chat about the project.
 
