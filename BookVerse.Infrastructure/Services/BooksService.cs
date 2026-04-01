@@ -13,16 +13,14 @@ public class BooksService : IBooksService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
-    private readonly AppDbContext _context;
     private readonly ILogger<BooksService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
 
-    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, AppDbContext context, ILogger<BooksService> logger,
+    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger,
         IDateTimeProvider dateTimeProvider)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
-        _context = context;
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
     }
@@ -77,6 +75,7 @@ public class BooksService : IBooksService
         await _unitOfWork.SaveChangesAsync();
 
         // add relationships
+        // add relationships
         foreach (var authorId in bookDto.AuthorIds)
         {
             var bookAuthor = new BookAuthor
@@ -85,7 +84,7 @@ public class BooksService : IBooksService
                 AuthorId = authorId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _context.BookAuthors.AddAsync(bookAuthor);
+            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor);
         }
 
         foreach (var categoryId in bookDto.CategoryIds)
@@ -96,7 +95,7 @@ public class BooksService : IBooksService
                 CategoryId = categoryId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _context.BookCategories.AddAsync(bookCategory);
+            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory);
         }
 
         await _unitOfWork.SaveChangesAsync();
@@ -123,12 +122,10 @@ public class BooksService : IBooksService
         _unitOfWork.Books.Update(book);
 
         //Remove existing author relationships
-        var existingAuthorRelations = await _context.BookAuthors
-            .Where(ba => ba.BookId == id)
-            .ToListAsync();
-        _context.BookAuthors.RemoveRange(existingAuthorRelations);
+        var existingAuthorRelations = await _unitOfWork.Books.GetBookAuthorsAsync(id);
+        _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations);
 
-        //Add new author relationships
+//Add new author relationships
         foreach (var authorId in bookDto.AuthorIds)
         {
             var bookAuthor = new BookAuthor
@@ -137,16 +134,14 @@ public class BooksService : IBooksService
                 AuthorId = authorId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _context.BookAuthors.AddAsync(bookAuthor);
+            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor);
         }
 
-        //Remove existing category relationships
-        var existingCategoryRelations = await _context.BookCategories.Where(bc => bc.BookId == id)
-            .ToListAsync();
+//Remove existing category relationships
+        var existingCategoryRelations = await _unitOfWork.Books.GetBookCategoriesAsync(id);
+        _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations);
 
-        _context.BookCategories.RemoveRange(existingCategoryRelations);
-
-        //Add new category relationships
+//Add new category relationships
         foreach (var categoryId in bookDto.CategoryIds)
         {
             var bookCategory = new BookCategory
@@ -155,7 +150,7 @@ public class BooksService : IBooksService
                 CategoryId = categoryId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _context.BookCategories.AddAsync(bookCategory);
+            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory);
         }
 
         await _unitOfWork.SaveChangesAsync();

@@ -69,11 +69,31 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     public async Task<Book?> GetExistingBook(Book book)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category)
             .FirstOrDefaultAsync(b => b.Title == book.Title);
     }
+
+    public async Task AddBookAuthorAsync(BookAuthor bookAuthor)
+        => await _context.BookAuthors.AddAsync(bookAuthor);
+
+    public async Task AddBookCategoryAsync(BookCategory bookCategory)
+        => await _context.BookCategories.AddAsync(bookCategory);
+
+    public async Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId)
+        => await _context.BookAuthors.Where(ba => ba.BookId == bookId).ToListAsync();
+
+    public async Task<List<BookCategory>> GetBookCategoriesAsync(int bookId)
+    
+        => await _context.BookCategories.Where(bc => bc.BookId == bookId).ToListAsync();
+
+    public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors)
+        => _context.BookAuthors.RemoveRange(bookAuthors);
+
+    public void RemoveBookCategories(IEnumerable<BookCategory> bookCategories)
+        => _context.BookCategories.RemoveRange(bookCategories);
 
     protected override IQueryable<Book> ApplySearch(IQueryable<Book> query, string searchTerm)
     {
