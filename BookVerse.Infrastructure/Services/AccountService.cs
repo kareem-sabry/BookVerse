@@ -363,7 +363,7 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<UserProfileDto> GetCurrentUserAsync(string userEmail)
+    public async Task<UserProfileDto?> GetCurrentUserAsync(string userEmail)
     {
         var user = await _userManager.FindByEmailAsync(userEmail);
         if (user == null)
