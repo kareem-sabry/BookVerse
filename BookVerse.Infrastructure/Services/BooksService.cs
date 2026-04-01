@@ -141,7 +141,7 @@ public class BooksService : IBooksService
         }
 
         //Remove existing category relationships
-        var existingCategoryRelations = await _context.BookCategories.Where(bc => book.Id == id)
+        var existingCategoryRelations = await _context.BookCategories.Where(bc => bc.BookId == id)
             .ToListAsync();
 
         _context.BookCategories.RemoveRange(existingCategoryRelations);
