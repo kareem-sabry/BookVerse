@@ -35,7 +35,6 @@ public class AdminService : IAdminService
         }
 
         var userIds = users.Select(u => u.Id).ToList();
-        ;
 
         var userRoles = await _context.UserRoles.Where(ur => userIds.Contains(ur.UserId))
             .Join(_context.Roles,

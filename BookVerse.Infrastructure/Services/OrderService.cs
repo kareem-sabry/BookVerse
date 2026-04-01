@@ -278,7 +278,7 @@ public class OrderService : IOrderService
     {
         // Format: ORD-YYYYMMDD-XXXXXX (e.g., ORD-20250103-123456)
         var timestamp = _dateTimeProvider.UtcNow.ToString("yyyyMMdd");
-        var random = new Random().Next(100000, 999999);
+        var random = Random.Shared.Next(100000, 999999);
         return $"ORD-{timestamp}-{random}";
     }
 }
