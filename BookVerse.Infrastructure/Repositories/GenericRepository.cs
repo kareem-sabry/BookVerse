@@ -19,75 +19,65 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     }
 
 
-    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    public virtual async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
     {
-        return await _dbSet.AsNoTracking().ToListAsync();
+        return await _dbSet.AsNoTracking().ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public virtual async Task<T?> GetByIdAsync(int id)
+    public virtual async Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
+        return await _dbSet.AsNoTracking()
+            .FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id, cancellationToken: cancellationToken);
     }
 
-    public virtual async Task<Core.Models.PagedResult<T>> GetPagedAsync(QueryParameters parameters)
+    public virtual async Task<Core.Models.PagedResult<T>> GetPagedAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         var query = _dbSet.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm)) query = ApplySearch(query, parameters.SearchTerm);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
 
         return new Core.Models.PagedResult<T>(items, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
-    public virtual async Task AddAsync(T entity)
+    public virtual async Task AddAsync(T entity, CancellationToken cancellationToken)
     {
-        await _dbSet.AddAsync(entity);
+        await _dbSet.AddAsync(entity, cancellationToken);
     }
 
-    public virtual void Update(T entity)
+    public virtual void Update(T entity, CancellationToken cancellationToken)
     {
         _dbSet.Update(entity);
     }
 
-    public virtual void Delete(T entity)
+    public virtual void Delete(T entity, CancellationToken cancellationToken)
     {
         _dbSet.Remove(entity);
     }
 
-    public async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    public async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
+        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public virtual async Task<bool> ExistsAsync(int id)
+    public virtual async Task<bool> ExistsAsync(int id, CancellationToken cancellationToken)
     {
-        return await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);
+        return await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id, cancellationToken: cancellationToken);
     }
 
-    public virtual async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
+    public virtual async Task<int> CountAsync(CancellationToken cancellationToken,
+        Expression<Func<T, bool>>? predicate = null
+    )
     {
         return predicate == null
-            ? await _dbSet.CountAsync()
-            : await _dbSet.CountAsync(predicate);
-    }
-
-    protected virtual IQueryable<T> ApplySearch(IQueryable<T> query, string searchTerm)
-    {
-        return query;
-    }
-
-    protected virtual IQueryable<T> ApplySorting(IQueryable<T> query, string sortBy, bool descending)
-    {
-        var orderBy = descending ? $"{sortBy} descending" : sortBy;
-        return query.OrderBy(orderBy);
+            ? await _dbSet.CountAsync(cancellationToken: cancellationToken)
+            : await _dbSet.CountAsync(predicate, cancellationToken: cancellationToken);
     }
 }

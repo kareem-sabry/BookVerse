@@ -18,7 +18,7 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(string toEmail, string subject, string body)
+    public async Task SendEmailAsync(string toEmail, string subject, string body,CancellationToken cancellationToken)
     {
         using var message = new MailMessage
         {
@@ -34,7 +34,7 @@ public class EmailService : IEmailService
             Credentials = new NetworkCredential(_emailOptions.SmtpUsername, _emailOptions.SmtpPassword),
             EnableSsl = true
         };
-        await smtp.SendMailAsync(message);
+        await smtp.SendMailAsync(message, cancellationToken);
         _logger.LogInformation($"Email send successfully to {toEmail}.");
     }
 }

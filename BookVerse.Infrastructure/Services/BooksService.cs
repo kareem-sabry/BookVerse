@@ -23,9 +23,10 @@ public class BooksService : IBooksService
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters)
+    public async Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters,
+        CancellationToken cancellationToken)
     {
-        var pagedBooks = await _unitOfWork.Books.GetPagedWithDetailsAsync(parameters);
+        var pagedBooks = await _unitOfWork.Books.GetPagedWithDetailsAsync(parameters, cancellationToken);
         var bookDtos = _mapper.Map<IEnumerable<BookReadDto>>(pagedBooks.Items);
 
         return new PagedResult<BookReadDto>(
@@ -36,9 +37,9 @@ public class BooksService : IBooksService
         );
     }
 
-    public async Task<BookReadDto?> GetByIdAsync(int id)
+    public async Task<BookReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id);
+        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id, cancellationToken);
 
         if (book == null)
         {
@@ -49,12 +50,12 @@ public class BooksService : IBooksService
         return _mapper.Map<BookReadDto>(book);
     }
 
-    public async Task<BookReadDto> CreateAsync(BookCreateDto bookDto)
+    public async Task<BookReadDto> CreateAsync(BookCreateDto bookDto, CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync();
 
         var book = _mapper.Map<Book>(bookDto);
-        var existingBook = await _unitOfWork.Books.GetExistingBook(book);
+        var existingBook = await _unitOfWork.Books.GetExistingBook(book, cancellationToken);
 
         if (existingBook != null)
         {
@@ -63,10 +64,9 @@ public class BooksService : IBooksService
             return _mapper.Map<BookReadDto>(existingBook);
         }
 
-        await _unitOfWork.Books.AddAsync(book);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.Books.AddAsync(book, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // add relationships
         // add relationships
         foreach (var authorId in bookDto.AuthorIds)
         {
@@ -76,7 +76,7 @@ public class BooksService : IBooksService
                 AuthorId = authorId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor);
+            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor, cancellationToken);
         }
 
         foreach (var categoryId in bookDto.CategoryIds)
@@ -87,21 +87,21 @@ public class BooksService : IBooksService
                 CategoryId = categoryId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory);
+            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory, cancellationToken);
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
 
-        var createdBook = await _unitOfWork.Books.GetByIdWithDetailsAsync(book.Id);
+        var createdBook = await _unitOfWork.Books.GetByIdWithDetailsAsync(book.Id, cancellationToken);
         return _mapper.Map<BookReadDto>(createdBook!);
     }
 
-    public async Task<bool> UpdateAsync(int id, BookUpdateDto bookDto)
+    public async Task<bool> UpdateAsync(int id, BookUpdateDto bookDto, CancellationToken cancellationToken)
     {
         await _unitOfWork.BeginTransactionAsync();
 
-        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id);
+        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id, cancellationToken);
         if (book == null)
         {
             _logger.LogWarning("Attempted to update non-existent book with ID: {BookId}", id);
@@ -111,13 +111,13 @@ public class BooksService : IBooksService
 
         //Update basic properties
         _mapper.Map(bookDto, book);
-        _unitOfWork.Books.Update(book);
+        _unitOfWork.Books.Update(book, cancellationToken);
 
         //Remove existing author relationships
-        var existingAuthorRelations = await _unitOfWork.Books.GetBookAuthorsAsync(id);
-        _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations);
+        var existingAuthorRelations = await _unitOfWork.Books.GetBookAuthorsAsync(id, cancellationToken);
+        _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations, cancellationToken);
 
-//Add new author relationships
+        //Add new author relationships
         foreach (var authorId in bookDto.AuthorIds)
         {
             var bookAuthor = new BookAuthor
@@ -126,14 +126,14 @@ public class BooksService : IBooksService
                 AuthorId = authorId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor);
+            await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor, cancellationToken);
         }
 
-//Remove existing category relationships
-        var existingCategoryRelations = await _unitOfWork.Books.GetBookCategoriesAsync(id);
-        _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations);
+        //Remove existing category relationships
+        var existingCategoryRelations = await _unitOfWork.Books.GetBookCategoriesAsync(id, cancellationToken);
+        _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations, cancellationToken);
 
-//Add new category relationships
+        //Add new category relationships
         foreach (var categoryId in bookDto.CategoryIds)
         {
             var bookCategory = new BookCategory
@@ -142,19 +142,19 @@ public class BooksService : IBooksService
                 CategoryId = categoryId,
                 CreatedAtUtc = _dateTimeProvider.UtcNow
             };
-            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory);
+            await _unitOfWork.Books.AddBookCategoryAsync(bookCategory, cancellationToken);
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
 
         _logger.LogInformation("Updated book: {BookId}", id);
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
     {
-        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id);
+        var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id, cancellationToken);
 
         if (book == null)
         {
@@ -162,15 +162,9 @@ public class BooksService : IBooksService
             return false;
         }
 
-        _unitOfWork.Books.Delete(book);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Books.Delete(book, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Deleted book: {BookId}", id);
         return true;
-    }
-
-    public async Task<IEnumerable<BookReadDto>> GetAllAsync()
-    {
-        var books = await _unitOfWork.Books.GetAllAsync();
-        return _mapper.Map<IEnumerable<BookReadDto>>(books);
     }
 }

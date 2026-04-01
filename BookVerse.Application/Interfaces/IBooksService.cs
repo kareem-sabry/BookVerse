@@ -5,9 +5,11 @@ namespace BookVerse.Application.Interfaces;
 
 public interface IBooksService
 {
-    Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters);
-    Task<BookReadDto?> GetByIdAsync(int id);
-    Task<BookReadDto> CreateAsync(BookCreateDto bookDto);
-    Task<bool> UpdateAsync(int id, BookUpdateDto bookDto);
-    Task<bool> DeleteAsync(int id);
+    Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters,
+        CancellationToken cancellationToken = default);
+
+    Task<BookReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<BookReadDto> CreateAsync(BookCreateDto bookDto, CancellationToken cancellationToken = default);
+    Task<bool> UpdateAsync(int id, BookUpdateDto bookDto, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 }

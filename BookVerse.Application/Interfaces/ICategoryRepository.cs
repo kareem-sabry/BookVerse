@@ -4,5 +4,5 @@ namespace BookVerse.Application.Interfaces;
 
 public interface ICategoryRepository : IGenericRepository<Category>
 {
-    Task<Category?> GetByNameAsync(string name);
+    Task<Category?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
 }

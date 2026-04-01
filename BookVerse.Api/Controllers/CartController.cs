@@ -29,7 +29,7 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(CartDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCart()
+    public async Task<IActionResult> GetCart(CancellationToken cancellationToken = default)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -40,7 +40,7 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var cart = await _cartService.GetCartByUserIdAsync(userId);
+        var cart = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
         if (cart == null)
             return NotFound(new BasicResponse
             {
@@ -55,7 +55,8 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(CartDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> AddToCart([FromBody] CartItemAdd cartItemAdd)
+    public async Task<IActionResult> AddToCart([FromBody] CartItemAdd cartItemAdd,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -81,7 +82,7 @@ public class CartController : ControllerBase
 
         try
         {
-            var cart = await _cartService.AddToCartAsync(userId, cartItemAdd);
+            var cart = await _cartService.AddToCartAsync(userId, cartItemAdd, cancellationToken);
             return Ok(cart);
         }
         catch (KeyNotFoundException ex)
@@ -107,7 +108,8 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateCartItem(int cartItemId, [FromBody] CartItemUpdate cartItemUpdate)
+    public async Task<IActionResult> UpdateCartItem(int cartItemId, [FromBody] CartItemUpdate cartItemUpdate,
+        CancellationToken cancellationToken = default)
     {
         if (cartItemId <= 0)
             return BadRequest(new BasicResponse
@@ -140,7 +142,7 @@ public class CartController : ControllerBase
 
         try
         {
-            var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate);
+            var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, cancellationToken);
 
             if (cart == null)
                 return NotFound(new BasicResponse
@@ -174,7 +176,7 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveCartItem(int cartItemId)
+    public async Task<IActionResult> RemoveCartItem(int cartItemId, CancellationToken cancellationToken = default)
     {
         if (cartItemId <= 0)
             return BadRequest(new BasicResponse
@@ -192,7 +194,7 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _cartService.RemoveCartItemAsync(userId, cartItemId);
+        var response = await _cartService.RemoveCartItemAsync(userId, cartItemId, cancellationToken);
 
         if (response.Succeeded) return Ok(response);
 
@@ -202,7 +204,7 @@ public class CartController : ControllerBase
     [HttpDelete("clear-cart")]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ClearCart()
+    public async Task<IActionResult> ClearCart(CancellationToken cancellationToken = default)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -213,7 +215,7 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _cartService.ClearCartAsync(userId);
+        var response = await _cartService.ClearCartAsync(userId, cancellationToken);
         return Ok(response);
     }
 }

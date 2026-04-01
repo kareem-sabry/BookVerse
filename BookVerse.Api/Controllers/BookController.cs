@@ -28,9 +28,10 @@ public class BookController : ControllerBase
     [AllowAnonymous]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     [ProducesResponseType(typeof(PagedResult<BookReadDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBooks([FromQuery] BookQueryParameters parameters)
+    public async Task<IActionResult> GetBooks([FromQuery] BookQueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        var books = await _booksService.GetPagedAsync(parameters);
+        var books = await _booksService.GetPagedAsync(parameters, cancellationToken);
         return Ok(books);
     }
 
@@ -40,7 +41,7 @@ public class BookController : ControllerBase
     [ProducesResponseType(typeof(BookReadDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BookReadDto>> GetBookById(int id)
+    public async Task<ActionResult<BookReadDto>> GetBookById(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -49,7 +50,7 @@ public class BookController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var book = await _booksService.GetByIdAsync(id);
+        var book = await _booksService.GetByIdAsync(id, cancellationToken);
 
         if (book == null)
             return NotFound(new BasicResponse
@@ -66,7 +67,8 @@ public class BookController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BookReadDto>> CreateBook([FromBody] BookCreateDto bookDto)
+    public async Task<ActionResult<BookReadDto>> CreateBook([FromBody] BookCreateDto bookDto,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -81,7 +83,7 @@ public class BookController : ControllerBase
             });
         }
 
-        var createdBook = await _booksService.CreateAsync(bookDto);
+        var createdBook = await _booksService.CreateAsync(bookDto, cancellationToken);
         return CreatedAtAction(nameof(GetBookById), new { id = createdBook.Id }, createdBook);
     }
 
@@ -92,7 +94,8 @@ public class BookController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateBook(int id, [FromBody] BookUpdateDto bookDto)
+    public async Task<IActionResult> UpdateBook(int id, [FromBody] BookUpdateDto bookDto,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -114,7 +117,7 @@ public class BookController : ControllerBase
             });
         }
 
-        var updated = await _booksService.UpdateAsync(id, bookDto);
+        var updated = await _booksService.UpdateAsync(id, bookDto, cancellationToken);
 
         if (!updated)
             return NotFound(new BasicResponse
@@ -133,7 +136,7 @@ public class BookController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteBook(int id)
+    public async Task<IActionResult> DeleteBook(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -141,7 +144,7 @@ public class BookController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        var deleted = await _booksService.DeleteAsync(id);
+        var deleted = await _booksService.DeleteAsync(id, cancellationToken);
 
         if (!deleted)
             return NotFound(new BasicResponse

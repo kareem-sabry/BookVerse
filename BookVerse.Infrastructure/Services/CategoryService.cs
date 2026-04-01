@@ -20,9 +20,9 @@ public class CategoryService : ICategoryService
         _logger = logger;
     }
 
-    public async Task<PagedResult<CategoryListDto>> GetPagedAsync(QueryParameters parameters)
+    public async Task<PagedResult<CategoryListDto>> GetPagedAsync(QueryParameters parameters,CancellationToken cancellationToken)
     {
-        var pagedCategories = await _unitOfWork.Categories.GetPagedAsync(parameters);
+        var pagedCategories = await _unitOfWork.Categories.GetPagedAsync(parameters, cancellationToken);
         var categoryDtos = _mapper.Map<IEnumerable<CategoryListDto>>(pagedCategories.Items);
 
         return new PagedResult<CategoryListDto>(
@@ -33,9 +33,9 @@ public class CategoryService : ICategoryService
         );
     }
 
-    public async Task<CategoryReadDto?> GetByIdAsync(int id)
+    public async Task<CategoryReadDto?> GetByIdAsync(int id,CancellationToken cancellationToken)
     {
-        var category = await _unitOfWork.Categories.GetByIdAsync(id);
+        var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)
         {
             _logger.LogWarning("Category not found with ID: {CategoryId}", id);
@@ -49,10 +49,10 @@ public class CategoryService : ICategoryService
     }
 
 
-    public async Task<CategoryReadDto> CreateAsync(CategoryCreateDto categoryDto)
+    public async Task<CategoryReadDto> CreateAsync(CategoryCreateDto categoryDto,CancellationToken cancellationToken)
     {
         var category = _mapper.Map<Category>(categoryDto);
-        var existingCategory = await _unitOfWork.Categories.GetByNameAsync(category.Name);
+        var existingCategory = await _unitOfWork.Categories.GetByNameAsync(category.Name, cancellationToken);
 
         if (existingCategory != null)
         {
@@ -61,16 +61,16 @@ public class CategoryService : ICategoryService
             return _mapper.Map<CategoryReadDto>(existingCategory);
         }
 
-        await _unitOfWork.Categories.AddAsync(category);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.Categories.AddAsync(category, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Created new category: {CategoryName}", category.Name);
         return _mapper.Map<CategoryReadDto>(category);
     }
 
-    public async Task<bool> UpdateAsync(int id, CategoryUpdateDto categoryDto)
+    public async Task<bool> UpdateAsync(int id, CategoryUpdateDto categoryDto,CancellationToken cancellationToken)
     {
-        var category = await _unitOfWork.Categories.GetByIdAsync(id);
+        var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)
         {
             _logger.LogWarning("Attempted to update non-existent category with ID: {CategoryId}", id);
@@ -78,36 +78,26 @@ public class CategoryService : ICategoryService
         }
 
         _mapper.Map(categoryDto, category);
-        _unitOfWork.Categories.Update(category);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Categories.Update(category, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated category: {CategoryId}", id);
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id,CancellationToken cancellationToken)
     {
-        var category = await _unitOfWork.Categories.GetByIdAsync(id);
+        var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)
         {
             _logger.LogWarning("Attempted to delete non-existent category with ID: {CategoryId}", id);
             return false;
         }
 
-        _unitOfWork.Categories.Delete(category);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Categories.Delete(category, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Deleted category: {CategoryId}", id);
         return true;
-    }
-
-    public async Task<IEnumerable<CategoryListDto>> GetAllAsync()
-    {
-        var categories = await _unitOfWork.Categories.GetAllAsync();
-        var dtos = _mapper.Map<IEnumerable<CategoryListDto>>(categories);
-
-        _logger.LogInformation("Retrieved {Count} categories", dtos.Count());
-
-        return dtos;
     }
 }

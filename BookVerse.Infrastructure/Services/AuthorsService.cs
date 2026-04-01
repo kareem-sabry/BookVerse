@@ -20,9 +20,10 @@ public class AuthorsService : IAuthorsService
         _logger = logger;
     }
 
-    public async Task<PagedResult<AuthorListDto>> GetPagedAsync(QueryParameters parameters)
+    public async Task<PagedResult<AuthorListDto>> GetPagedAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
-        var pagedAuthors = await _unitOfWork.Authors.GetPagedAsync(parameters);
+        var pagedAuthors = await _unitOfWork.Authors.GetPagedAsync(parameters, cancellationToken);
         var authorDtos = _mapper.Map<IEnumerable<AuthorListDto>>(pagedAuthors.Items);
 
         return new PagedResult<AuthorListDto>(
@@ -33,9 +34,9 @@ public class AuthorsService : IAuthorsService
         );
     }
 
-    public async Task<AuthorReadDto?> GetByIdAsync(int id)
+    public async Task<AuthorReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var author = await _unitOfWork.Authors.GetByIdAsync(id);
+        var author = await _unitOfWork.Authors.GetByIdAsync(id, cancellationToken);
         if (author == null)
         {
             _logger.LogWarning("Author not found with ID: {AuthorId}", id);
@@ -47,10 +48,11 @@ public class AuthorsService : IAuthorsService
         return dto;
     }
 
-    public async Task<AuthorReadDto> CreateAsync(AuthorCreateDto authorDto)
+    public async Task<AuthorReadDto> CreateAsync(AuthorCreateDto authorDto, CancellationToken cancellationToken)
     {
         var author = _mapper.Map<Author>(authorDto);
-        var existingAuthor = await _unitOfWork.Authors.GetByNameAsync(author.FirstName, author.LastName);
+        var existingAuthor =
+            await _unitOfWork.Authors.GetByNameAsync(author.FirstName, author.LastName, cancellationToken);
 
         if (existingAuthor != null)
         {
@@ -59,8 +61,8 @@ public class AuthorsService : IAuthorsService
             return _mapper.Map<AuthorReadDto>(existingAuthor);
         }
 
-        await _unitOfWork.Authors.AddAsync(author);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.Authors.AddAsync(author, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Created new author: {FirstName} {LastName}",
             author.FirstName, author.LastName);
@@ -68,9 +70,9 @@ public class AuthorsService : IAuthorsService
         return _mapper.Map<AuthorReadDto>(author);
     }
 
-    public async Task<bool> UpdateAsync(int id, AuthorUpdateDto authorDto)
+    public async Task<bool> UpdateAsync(int id, AuthorUpdateDto authorDto, CancellationToken cancellationToken)
     {
-        var retrievedAuthor = await _unitOfWork.Authors.GetByIdAsync(id);
+        var retrievedAuthor = await _unitOfWork.Authors.GetByIdAsync(id, cancellationToken);
         if (retrievedAuthor == null)
         {
             _logger.LogWarning("Attempted to update non-existent author with ID: {AuthorId}", id);
@@ -78,36 +80,26 @@ public class AuthorsService : IAuthorsService
         }
 
         _mapper.Map(authorDto, retrievedAuthor);
-        _unitOfWork.Authors.Update(retrievedAuthor);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Authors.Update(retrievedAuthor, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated author: {AuthorId}", id);
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
     {
-        var retrievedAuthor = await _unitOfWork.Authors.GetByIdAsync(id);
+        var retrievedAuthor = await _unitOfWork.Authors.GetByIdAsync(id, cancellationToken);
         if (retrievedAuthor == null)
         {
             _logger.LogWarning("Attempted to delete non-existent author with ID: {AuthorId}", id);
             return false;
         }
 
-        _unitOfWork.Authors.Delete(retrievedAuthor);
-        await _unitOfWork.SaveChangesAsync();
+        _unitOfWork.Authors.Delete(retrievedAuthor, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Deleted author: {AuthorId}", id);
         return true;
-    }
-
-    public async Task<IEnumerable<AuthorListDto>> GetAllAsync()
-    {
-        var authors = await _unitOfWork.Authors.GetAllAsync();
-        var dtos = _mapper.Map<IEnumerable<AuthorListDto>>(authors);
-
-        _logger.LogInformation("Retrieved {Count} authors", dtos.Count());
-
-        return dtos;
     }
 }

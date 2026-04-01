@@ -28,9 +28,10 @@ public class AuthorController : ControllerBase
     [AllowAnonymous]
     [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
     [ProducesResponseType(typeof(PagedResult<AuthorListDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAuthors([FromQuery] QueryParameters parameters)
+    public async Task<IActionResult> GetAuthors([FromQuery] QueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        var authors = await _service.GetPagedAsync(parameters);
+        var authors = await _service.GetPagedAsync(parameters, cancellationToken);
         return Ok(authors);
     }
 
@@ -40,7 +41,7 @@ public class AuthorController : ControllerBase
     [ProducesResponseType(typeof(AuthorReadDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<AuthorReadDto>> GetAuthor(int id)
+    public async Task<ActionResult<AuthorReadDto>> GetAuthor(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -48,7 +49,7 @@ public class AuthorController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        var author = await _service.GetByIdAsync(id);
+        var author = await _service.GetByIdAsync(id, cancellationToken);
         if (author == null)
             return NotFound(new BasicResponse
             {
@@ -64,7 +65,8 @@ public class AuthorController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<AuthorReadDto>> CreateAuthor([FromBody] AuthorCreateDto authorDto)
+    public async Task<ActionResult<AuthorReadDto>> CreateAuthor([FromBody] AuthorCreateDto authorDto,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -79,7 +81,7 @@ public class AuthorController : ControllerBase
             });
         }
 
-        var createdAuthor = await _service.CreateAsync(authorDto);
+        var createdAuthor = await _service.CreateAsync(authorDto, cancellationToken);
 
         return CreatedAtAction(nameof(GetAuthor), new { id = createdAuthor.Id }, createdAuthor);
     }
@@ -91,7 +93,8 @@ public class AuthorController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateAuthor(int id, [FromBody] AuthorUpdateDto authorDto)
+    public async Task<IActionResult> UpdateAuthor(int id, [FromBody] AuthorUpdateDto authorDto,
+        CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -112,7 +115,7 @@ public class AuthorController : ControllerBase
             });
         }
 
-        var updated = await _service.UpdateAsync(id, authorDto);
+        var updated = await _service.UpdateAsync(id, authorDto, cancellationToken);
 
         if (!updated)
             return NotFound(new BasicResponse
@@ -131,7 +134,7 @@ public class AuthorController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteAuthor(int id)
+    public async Task<IActionResult> DeleteAuthor(int id, CancellationToken cancellationToken = default)
     {
         if (id <= 0)
             return BadRequest(new BasicResponse
@@ -140,7 +143,7 @@ public class AuthorController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var deleted = await _service.DeleteAsync(id);
+        var deleted = await _service.DeleteAsync(id, cancellationToken);
         if (!deleted)
             return NotFound(new BasicResponse
             {

@@ -4,7 +4,7 @@ namespace BookVerse.Application.Interfaces;
 
 public interface IAdminService
 {
-    Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync();
+    Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync(CancellationToken cancellationToken);
     Task<UserWithRolesDto?> GetUserByIdAsync(Guid userId);
     Task<BasicResponse> MakeUserAdminAsync(Guid userId, string currentAdminEmail);
     Task<BasicResponse> RemoveAdminRoleAsync(Guid userId, Guid currentAdminId);

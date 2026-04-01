@@ -186,7 +186,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest refreshTokenRequest)
+    public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest refreshTokenRequest,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(refreshTokenRequest.RefreshToken))
             return new RefreshTokenResponse
@@ -195,7 +196,8 @@ public class AccountService : IAccountService
                 Message = ErrorMessages.RefreshTokenMissing
             };
 
-        var user = await _userRepository.GetUserByRefreshTokenAsync(refreshTokenRequest.RefreshToken);
+        var user = await _userRepository.GetUserByRefreshTokenAsync(refreshTokenRequest.RefreshToken,
+            cancellationToken);
 
         if (user == null)
         {
