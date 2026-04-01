@@ -13,6 +13,7 @@ using BookVerse.Infrastructure.Data;
 using BookVerse.Infrastructure.Repositories;
 using BookVerse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -295,7 +296,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Token Processing
 builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessorService>();
-
+// Health Check
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
 //AutoMapper
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -396,6 +399,32 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+// Detailed health check response — returns JSON with component statuses.
+// This endpoint is intentionally unauthenticated so load balancers and
+// container orchestrators (Docker, Kubernetes) can probe it without credentials.
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
 
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checkedAt = DateTime.UtcNow,
+            duration = report.TotalDuration,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration,
+                error = e.Value.Exception?.Message
+            })
+        };
+
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
 
 app.Run();
