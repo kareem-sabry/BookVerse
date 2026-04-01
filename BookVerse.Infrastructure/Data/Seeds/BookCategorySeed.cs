@@ -210,7 +210,7 @@ public static class BookCategorySeed
 
             // The Catcher in the Rye - Classic, Coming of Age
             new() { BookId = 50, CategoryId = 1, CreatedAtUtc = now },
-            new() { BookId = 50, CategoryId = 12, CreatedAtUtc = now },
+            new() { BookId = 50, CategoryId = 12, CreatedAtUtc = now }
         };
     }
 }

@@ -3,18 +3,16 @@ using BookVerse.Application.Dtos.Book;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Entities;
 using BookVerse.Core.Models;
-using BookVerse.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace BookVerse.Infrastructure.Services;
 
 public class BooksService : IBooksService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
-    private readonly ILogger<BooksService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILogger<BooksService> _logger;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger,
         IDateTimeProvider dateTimeProvider)
@@ -36,12 +34,6 @@ public class BooksService : IBooksService
             pagedBooks.CurrentPage,
             pagedBooks.PageSize
         );
-    }
-
-    public async Task<IEnumerable<BookReadDto>> GetAllAsync()
-    {
-        var books = await _unitOfWork.Books.GetAllAsync();
-        return _mapper.Map<IEnumerable<BookReadDto>>(books);
     }
 
     public async Task<BookReadDto?> GetByIdAsync(int id)
@@ -174,5 +166,11 @@ public class BooksService : IBooksService
         await _unitOfWork.SaveChangesAsync();
         _logger.LogInformation("Deleted book: {BookId}", id);
         return true;
+    }
+
+    public async Task<IEnumerable<BookReadDto>> GetAllAsync()
+    {
+        var books = await _unitOfWork.Books.GetAllAsync();
+        return _mapper.Map<IEnumerable<BookReadDto>>(books);
     }
 }

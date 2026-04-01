@@ -55,8 +55,7 @@ public class CategoryController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.CategoryNotFound
             });
-        else
-            return Ok(category);
+        return Ok(category);
     }
 
     [HttpPost]
@@ -113,13 +112,11 @@ public class CategoryController : ControllerBase
 
         var updated = await _categoryService.UpdateAsync(id, categoryDto);
         if (!updated)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.CategoryNotFound
             });
-        }
 
         return NoContent();
     }

@@ -10,10 +10,10 @@ namespace BookVerse.Infrastructure.Services;
 
 public class CartService : ICartService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
-    private readonly ILogger<CartService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILogger<CartService> _logger;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CartService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<CartService> logger,
         IDateTimeProvider dateTimeProvider)

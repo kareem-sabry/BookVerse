@@ -9,9 +9,9 @@ namespace BookVerse.Infrastructure.Services;
 
 public class AuthorsService : IAuthorsService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly ILogger<AuthorsService> _logger;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthorsService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AuthorsService> logger)
     {
@@ -31,16 +31,6 @@ public class AuthorsService : IAuthorsService
             pagedAuthors.CurrentPage,
             pagedAuthors.PageSize
         );
-    }
-
-    public async Task<IEnumerable<AuthorListDto>> GetAllAsync()
-    {
-        var authors = await _unitOfWork.Authors.GetAllAsync();
-        var dtos = _mapper.Map<IEnumerable<AuthorListDto>>(authors);
-
-        _logger.LogInformation("Retrieved {Count} authors", dtos.Count());
-
-        return dtos;
     }
 
     public async Task<AuthorReadDto?> GetByIdAsync(int id)
@@ -109,5 +99,15 @@ public class AuthorsService : IAuthorsService
 
         _logger.LogInformation("Deleted author: {AuthorId}", id);
         return true;
+    }
+
+    public async Task<IEnumerable<AuthorListDto>> GetAllAsync()
+    {
+        var authors = await _unitOfWork.Authors.GetAllAsync();
+        var dtos = _mapper.Map<IEnumerable<AuthorListDto>>(authors);
+
+        _logger.LogInformation("Retrieved {Count} authors", dtos.Count());
+
+        return dtos;
     }
 }

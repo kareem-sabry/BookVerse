@@ -29,24 +29,20 @@ public static class DbInitializer
     {
         //Check if Admin role exists
         if (!await roleManager.RoleExistsAsync(IdentityRoleConstants.Admin))
-        {
             await roleManager.CreateAsync(new IdentityRole<Guid>
             {
                 Id = IdentityRoleConstants.AdminRoleGuid,
                 Name = IdentityRoleConstants.Admin,
                 NormalizedName = IdentityRoleConstants.Admin.ToUpper()
             });
-        }
 
         if (!await roleManager.RoleExistsAsync(IdentityRoleConstants.User))
-        {
             await roleManager.CreateAsync(new IdentityRole<Guid>
             {
                 Id = IdentityRoleConstants.UserRoleGuid,
                 Name = IdentityRoleConstants.User,
                 NormalizedName = IdentityRoleConstants.User.ToUpper()
             });
-        }
     }
 
     private static async Task SeedAdminUserAsync(UserManager<User> userManager, AdminUserOptions admin, ILogger logger,
@@ -71,18 +67,15 @@ public static class DbInitializer
             return;
         }
 
-        var user = User.Create(email: admin.Email, firstName: admin.FirstName, lastName: admin.LastName,
-            createdAt: dateTimeProvider.UtcNow);
+        var user = User.Create(admin.Email, admin.FirstName, admin.LastName,
+            dateTimeProvider.UtcNow);
 
         var createResult = await userManager.CreateAsync(user, admin.Password);
 
         if (!createResult.Succeeded)
         {
             logger.LogError("Failed to create Admin user.");
-            foreach (var error in createResult.Errors)
-            {
-                logger.LogError($" - {error.Description}");
-            }
+            foreach (var error in createResult.Errors) logger.LogError($" - {error.Description}");
 
             return;
         }

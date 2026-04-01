@@ -1,13 +1,12 @@
-﻿using System.Net;
-using Microsoft.AspNetCore.Diagnostics;
+﻿using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookVerse.Api.Middlewares;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
     private readonly IHostEnvironment _environment;
+    private readonly ILogger<GlobalExceptionHandler> _logger;
 
     public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment environment)
     {
@@ -30,19 +29,15 @@ public class GlobalExceptionHandler : IExceptionHandler
         };
 
         if (statusCode >= StatusCodes.Status500InternalServerError)
-        {
             _logger.LogError(exception,
                 "Unhandled server error: {Message} | Status: {StatusCode}",
                 exception.Message,
                 statusCode);
-        }
         else
-        {
             _logger.LogWarning(
                 "Client error: {Message} | Status: {StatusCode}",
                 exception.Message,
                 statusCode);
-        }
 
         var problemDetails = new ProblemDetails
         {
@@ -54,10 +49,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         };
 
         // Include stack trace only in development
-        if (_environment.IsDevelopment())
-        {
-            problemDetails.Extensions["stackTrace"] = exception.StackTrace;
-        }
+        if (_environment.IsDevelopment()) problemDetails.Extensions["stackTrace"] = exception.StackTrace;
 
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
         problemDetails.Extensions["timestamp"] = DateTime.UtcNow;

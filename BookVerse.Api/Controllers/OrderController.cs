@@ -17,8 +17,8 @@ namespace BookVerse.Api.Controllers;
 [Produces("application/json")]
 public class OrderController : ControllerBase
 {
-    private readonly IOrderService _orderService;
     private readonly ILogger<OrderController> _logger;
+    private readonly IOrderService _orderService;
 
     public OrderController(IOrderService orderService, ILogger<OrderController> logger)
     {
@@ -27,7 +27,7 @@ public class OrderController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new order from the user's cart
+    ///     Create a new order from the user's cart
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(OrderReadDto), StatusCodes.Status201Created)]
@@ -49,13 +49,11 @@ public class OrderController : ControllerBase
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
 
         var order = await _orderService.CreateOrderFromCartAsync(userId, orderCreateDto);
@@ -63,7 +61,7 @@ public class OrderController : ControllerBase
     }
 
     /// <summary>
-    /// Get the current user's orders (paginated)
+    ///     Get the current user's orders (paginated)
     /// </summary>
     [HttpGet("my-orders")]
     [ProducesResponseType(typeof(PagedResult<OrderListDto>), StatusCodes.Status200OK)]
@@ -72,20 +70,18 @@ public class OrderController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var orders = await _orderService.GetUserOrdersAsync(userId, parameters);
         return Ok(orders);
     }
 
     /// <summary>
-    /// Get all orders (admin only)
+    ///     Get all orders (admin only)
     /// </summary>
     [HttpGet]
     [Authorize(Roles = IdentityRoleConstants.Admin)]
@@ -99,7 +95,7 @@ public class OrderController : ControllerBase
     }
 
     /// <summary>
-    /// Get order details by ID
+    ///     Get order details by ID
     /// </summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(OrderReadDto), StatusCodes.Status200OK)]
@@ -109,42 +105,36 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> GetOrderById(int id)
     {
         if (id <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         // Check if user is admin
         var isAdmin = User.IsInRole(IdentityRoleConstants.Admin);
 
         var order = await _orderService.GetOrderByIdAsync(userId, id, isAdmin);
         if (order == null)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.OrderNotFound
             });
-        }
 
         return Ok(order);
     }
 
     /// <summary>
-    /// Cancel an order (user can cancel their own pending/processing orders)
+    ///     Cancel an order (user can cancel their own pending/processing orders)
     /// </summary>
     [HttpPut("{id:int}/cancel")]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
@@ -154,35 +144,28 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> CancelOrder(int id)
     {
         if (id <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var response = await _orderService.CancelOrderAsync(userId, id);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
     }
 
     /// <summary>
-    /// Update order status (admin only)
+    ///     Update order status (admin only)
     /// </summary>
     [HttpPut("{id:int}/status")]
     [Authorize(Roles = IdentityRoleConstants.Admin)]
@@ -194,13 +177,11 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderUpdateStatusDto updateDto)
     {
         if (id <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         if (!ModelState.IsValid)
         {
@@ -215,16 +196,13 @@ public class OrderController : ControllerBase
         }
 
         var response = await _orderService.UpdateOrderStatusAsync(id, updateDto);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return NotFound(response);
     }
 
     /// <summary>
-    /// Update payment status (admin only)
+    ///     Update payment status (admin only)
     /// </summary>
     [HttpPut("{id:int}/payment-status")]
     [Authorize(Roles = IdentityRoleConstants.Admin)]
@@ -236,13 +214,11 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> UpdatePaymentStatus(int id, [FromBody] PaymentUpdateStatusDto updateDto)
     {
         if (id <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         if (!ModelState.IsValid)
         {
@@ -257,10 +233,7 @@ public class OrderController : ControllerBase
         }
 
         var response = await _orderService.UpdatePaymentStatusAsync(id, updateDto);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return NotFound(response);
     }

@@ -137,7 +137,7 @@ public static class BookAuthorSeed
             new() { BookId = 49, AuthorId = 39, CreatedAtUtc = now }, // To Kill a Mockingbird
 
             // J.D. Salinger
-            new() { BookId = 50, AuthorId = 40, CreatedAtUtc = now }, // The Catcher in the Rye
+            new() { BookId = 50, AuthorId = 40, CreatedAtUtc = now } // The Catcher in the Rye
         };
     }
 }

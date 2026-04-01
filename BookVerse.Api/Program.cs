@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using BookVerse.Api.Middlewares;
+using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
@@ -9,8 +12,6 @@ using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Data;
 using BookVerse.Infrastructure.Repositories;
 using BookVerse.Infrastructure.Services;
-using BookVerse.Api.Middlewares;
-using BookVerse.Application.Dtos.User;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -49,17 +50,17 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     options.JsonSerializerOptions.DefaultIgnoreCondition =
-        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        JsonIgnoreCondition.WhenWritingNull;
 }).AddNewtonsoftJson();
 builder.Services.AddRateLimiter(options =>
 {
     // Global rate limit
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-            factory: partition => new FixedWindowRateLimiterOptions
+            context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partition => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 100,
@@ -90,7 +91,7 @@ builder.Services.AddRateLimiter(options =>
         {
             Succeeded = false,
             Message = "Too many requests. Please try again later."
-        }, cancellationToken: token);
+        }, token);
     };
 });
 builder.Services.AddResponseCaching();
@@ -157,9 +158,7 @@ builder.Services.AddAuthentication(opt =>
             $"JWT configuration is missing. Please configure '{JwtOptions.JwtOptionsKey}' section.");
 
     if (string.IsNullOrEmpty(jwtOptions.Secret) || jwtOptions.Secret.Length < 32)
-    {
         throw new ArgumentException("JWT Secret must be at least 32 characters long.");
-    }
 
     options.TokenValidationParameters = new TokenValidationParameters
     {

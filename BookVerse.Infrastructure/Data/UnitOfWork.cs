@@ -8,30 +8,30 @@ namespace BookVerse.Infrastructure.Data;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
-    private IDbContextTransaction? _transaction;
+    private IAuthorRepository? _authorRepository;
 
     private IBookRepository? _bookRepository;
-    private IAuthorRepository? _authorRepository;
-    private ICategoryRepository? _categoryRepository;
-    private IUserRepository? _userRepository;
 
     private ICartRepository? _cartRepository;
+    private ICategoryRepository? _categoryRepository;
+    private IGenericRepository<OrderItem>? _orderItemRepository;
 
     private IOrderRepository? _orderRepository;
-    private IGenericRepository<OrderItem>? _orderItemRepository;
+    private IDbContextTransaction? _transaction;
+    private IUserRepository? _userRepository;
 
     public UnitOfWork(AppDbContext context)
     {
         _context = context;
     }
 
+    public IUserRepository Users => _userRepository ??= new UserRepository(_context);
+
     public IBookRepository Books => _bookRepository ??= new BookRepository(_context);
 
     public IAuthorRepository Authors => _authorRepository ??= new AuthorRepository(_context);
 
     public ICategoryRepository Categories => _categoryRepository ??= new CategoryRepository(_context);
-
-    public IUserRepository Users => _userRepository ??= new UserRepository(_context);
     public ICartRepository Carts => _cartRepository ?? new CartRepository(_context);
     public IOrderRepository Orders => _orderRepository ??= new OrderRepository(_context);
 
@@ -53,10 +53,7 @@ public class UnitOfWork : IUnitOfWork
         try
         {
             await _context.SaveChangesAsync();
-            if (_transaction != null)
-            {
-                await _transaction.CommitAsync();
-            }
+            if (_transaction != null) await _transaction.CommitAsync();
         }
         catch
         {

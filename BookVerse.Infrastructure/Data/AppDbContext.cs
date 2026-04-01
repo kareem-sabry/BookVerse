@@ -12,8 +12,8 @@ namespace BookVerse.Infrastructure.Data;
 
 public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AppDbContext(DbContextOptions<AppDbContext> options, IHttpContextAccessor httpContextAccessor,
         IDateTimeProvider dateTimeProvider) :
@@ -198,7 +198,6 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 
         foreach (var entry in entries)
-        {
             if (entry.Entity is IAuditable auditableEntity)
             {
                 if (entry.State == EntityState.Added)
@@ -239,7 +238,6 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
                     entry.Property(nameof(user.CreatedAtUtc)).IsModified = false;
                 }
             }
-        }
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

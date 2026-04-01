@@ -11,10 +11,10 @@ namespace BookVerse.Infrastructure.Services;
 
 public class AdminService : IAdminService
 {
-    private readonly UserManager<User> _userManager;
+    private readonly AppDbContext _context;
     private readonly ILogger<AdminService> _logger;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
-    private readonly AppDbContext _context;
+    private readonly UserManager<User> _userManager;
 
     public AdminService(UserManager<User> userManager, ILogger<AdminService> logger,
         RoleManager<IdentityRole<Guid>> roleManager, AppDbContext context)
@@ -29,10 +29,7 @@ public class AdminService : IAdminService
     {
         var users = await _userManager.Users.ToListAsync();
 
-        if (!users.Any())
-        {
-            return Enumerable.Empty<UserWithRolesDto>();
-        }
+        if (!users.Any()) return Enumerable.Empty<UserWithRolesDto>();
 
         var userIds = users.Select(u => u.Id).ToList();
 

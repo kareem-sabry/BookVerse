@@ -14,14 +14,14 @@ namespace BookVerse.Tests.Unit.Services;
 
 public class OrderServiceTests
 {
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<IMapper> _mockMapper;
-    private readonly Mock<ILogger<OrderService>> _mockLogger;
-    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
-    private readonly Mock<IOrderRepository> _mockOrderRepository;
-    private readonly Mock<ICartRepository> _mockCartRepository;
     private readonly Mock<IBookRepository> _mockBookRepository;
+    private readonly Mock<ICartRepository> _mockCartRepository;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
+    private readonly Mock<ILogger<OrderService>> _mockLogger;
+    private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IGenericRepository<OrderItem>> _mockOrderItemRepository;
+    private readonly Mock<IOrderRepository> _mockOrderRepository;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly OrderService _sut;
 
     public OrderServiceTests()
@@ -50,6 +50,66 @@ public class OrderServiceTests
             _mockLogger.Object,
             _mockDateTimeProvider.Object);
     }
+
+    #region GetAllOrdersAsync Tests
+
+    [Fact]
+    public async Task GetAllOrdersAsync_ReturnsAllOrdersPaginated()
+    {
+        // Arrange
+        var parameters = new QueryParameters
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var orders = new List<Order>
+        {
+            new()
+            {
+                Id = 1,
+                UserId = Guid.NewGuid(),
+                OrderNumber = "ORD-20250104-123456",
+                TotalAmount = 99.97m,
+                Status = OrderStatus.Pending,
+                OrderItems = new List<OrderItem>()
+            },
+            new()
+            {
+                Id = 2,
+                UserId = Guid.NewGuid(),
+                OrderNumber = "ORD-20250103-654321",
+                TotalAmount = 49.99m,
+                Status = OrderStatus.Shipped,
+                OrderItems = new List<OrderItem>()
+            }
+        };
+
+        var pagedOrders = new PagedResult<Order>(orders, 2, 1, 10);
+
+        var orderDtos = new List<OrderListDto>
+        {
+            new() { Id = 1, OrderNumber = "ORD-20250104-123456" },
+            new() { Id = 2, OrderNumber = "ORD-20250103-654321" }
+        };
+
+        _mockOrderRepository.Setup(x => x.GetAllOrdersAsync(parameters))
+            .ReturnsAsync(pagedOrders);
+        _mockMapper.Setup(x => x.Map<IEnumerable<OrderListDto>>(orders))
+            .Returns(orderDtos);
+
+        // Act
+        var result = await _sut.GetAllOrdersAsync(parameters);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Items.Should().HaveCount(2);
+        result.TotalCount.Should().Be(2);
+
+        _mockOrderRepository.Verify(x => x.GetAllOrdersAsync(parameters), Times.Once);
+    }
+
+    #endregion
 
     #region CreateOrderFromCartAsync Tests
 
@@ -87,7 +147,7 @@ public class OrderServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -96,7 +156,7 @@ public class OrderServiceTests
                     PriceAtAdd = 29.99m,
                     Book = book1
                 },
-                new CartItem
+                new()
                 {
                     Id = 2,
                     CartId = 1,
@@ -122,7 +182,7 @@ public class OrderServiceTests
             Notes = orderCreateDto.Notes,
             OrderItems = new List<OrderItem>
             {
-                new OrderItem
+                new()
                 {
                     Id = 1,
                     OrderId = 1,
@@ -131,7 +191,7 @@ public class OrderServiceTests
                     PriceAtOrder = 29.99m,
                     Book = book1
                 },
-                new OrderItem
+                new()
                 {
                     Id = 2,
                     OrderId = 1,
@@ -152,8 +212,8 @@ public class OrderServiceTests
             PaymentStatus = PaymentStatus.Pending,
             OrderItems = new List<OrderItemDto>
             {
-                new OrderItemDto { BookId = 1, BookTitle = "Clean Code", Quantity = 2, PriceAtOrder = 29.99m },
-                new OrderItemDto { BookId = 2, BookTitle = "Design Patterns", Quantity = 1, PriceAtOrder = 39.99m }
+                new() { BookId = 1, BookTitle = "Clean Code", Quantity = 2, PriceAtOrder = 29.99m },
+                new() { BookId = 2, BookTitle = "Design Patterns", Quantity = 1, PriceAtOrder = 39.99m }
             }
         };
 
@@ -266,7 +326,7 @@ public class OrderServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -318,7 +378,7 @@ public class OrderServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -371,7 +431,7 @@ public class OrderServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -427,7 +487,7 @@ public class OrderServiceTests
 
         var orders = new List<Order>
         {
-            new Order
+            new()
             {
                 Id = 1,
                 UserId = userId,
@@ -436,7 +496,7 @@ public class OrderServiceTests
                 Status = OrderStatus.Pending,
                 OrderItems = new List<OrderItem>()
             },
-            new Order
+            new()
             {
                 Id = 2,
                 UserId = userId,
@@ -451,14 +511,14 @@ public class OrderServiceTests
 
         var orderDtos = new List<OrderListDto>
         {
-            new OrderListDto
+            new()
             {
                 Id = 1,
                 OrderNumber = "ORD-20250104-123456",
                 TotalAmount = 99.97m,
                 Status = OrderStatus.Pending
             },
-            new OrderListDto
+            new()
             {
                 Id = 2,
                 OrderNumber = "ORD-20250103-654321",
@@ -515,66 +575,6 @@ public class OrderServiceTests
 
     #endregion
 
-    #region GetAllOrdersAsync Tests
-
-    [Fact]
-    public async Task GetAllOrdersAsync_ReturnsAllOrdersPaginated()
-    {
-        // Arrange
-        var parameters = new QueryParameters
-        {
-            PageNumber = 1,
-            PageSize = 10
-        };
-
-        var orders = new List<Order>
-        {
-            new Order
-            {
-                Id = 1,
-                UserId = Guid.NewGuid(),
-                OrderNumber = "ORD-20250104-123456",
-                TotalAmount = 99.97m,
-                Status = OrderStatus.Pending,
-                OrderItems = new List<OrderItem>()
-            },
-            new Order
-            {
-                Id = 2,
-                UserId = Guid.NewGuid(),
-                OrderNumber = "ORD-20250103-654321",
-                TotalAmount = 49.99m,
-                Status = OrderStatus.Shipped,
-                OrderItems = new List<OrderItem>()
-            }
-        };
-
-        var pagedOrders = new PagedResult<Order>(orders, 2, 1, 10);
-
-        var orderDtos = new List<OrderListDto>
-        {
-            new OrderListDto { Id = 1, OrderNumber = "ORD-20250104-123456" },
-            new OrderListDto { Id = 2, OrderNumber = "ORD-20250103-654321" }
-        };
-
-        _mockOrderRepository.Setup(x => x.GetAllOrdersAsync(parameters))
-            .ReturnsAsync(pagedOrders);
-        _mockMapper.Setup(x => x.Map<IEnumerable<OrderListDto>>(orders))
-            .Returns(orderDtos);
-
-        // Act
-        var result = await _sut.GetAllOrdersAsync(parameters);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Items.Should().HaveCount(2);
-        result.TotalCount.Should().Be(2);
-
-        _mockOrderRepository.Verify(x => x.GetAllOrdersAsync(parameters), Times.Once);
-    }
-
-    #endregion
-
     #region GetOrderByIdAsync Tests
 
     [Fact]
@@ -606,7 +606,7 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, isAdmin: false);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId);
 
         // Assert
         result.Should().NotBeNull();
@@ -644,7 +644,7 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, isAdmin: true);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, true);
 
         // Assert
         result.Should().NotBeNull();
@@ -665,7 +665,7 @@ public class OrderServiceTests
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, isAdmin: false);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId);
 
         // Assert
         result.Should().BeNull();
@@ -700,7 +700,7 @@ public class OrderServiceTests
             Status = OrderStatus.Pending,
             OrderItems = new List<OrderItem>
             {
-                new OrderItem
+                new()
                 {
                     Id = 1,
                     OrderId = orderId,
@@ -866,8 +866,8 @@ public class OrderServiceTests
             Status = OrderStatus.Pending,
             OrderItems = new List<OrderItem>
             {
-                new OrderItem { BookId = 1, Quantity = 2, Book = book1 },
-                new OrderItem { BookId = 2, Quantity = 3, Book = book2 }
+                new() { BookId = 1, Quantity = 2, Book = book1 },
+                new() { BookId = 2, Quantity = 3, Book = book2 }
             }
         };
 

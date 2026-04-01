@@ -5,8 +5,6 @@ namespace BookVerse.Core.Entities;
 
 public class Book : IAuditable, IEntity
 {
-    [Key] public int Id { get; set; }
-
     [Required] [MaxLength(200)] public string Title { get; set; } = string.Empty;
 
     [MaxLength(2000)] public string? Description { get; set; }
@@ -15,13 +13,14 @@ public class Book : IAuditable, IEntity
     public decimal Price { get; set; }
     public DateOnly PublishDate { get; set; }
     public int QuantityInStock { get; set; }
+
+    public ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
+    public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
 
     [MaxLength(100)] public string? CreatedBy { get; set; }
 
     [MaxLength(100)] public string? UpdatedBy { get; set; }
-
-    public ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
-    public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
+    [Key] public int Id { get; set; }
 }

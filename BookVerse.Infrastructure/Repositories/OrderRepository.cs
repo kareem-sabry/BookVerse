@@ -26,28 +26,21 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
 
     public async Task<PagedResult<Order>> GetUserOrdersAsync(Guid userId, QueryParameters parameters)
     {
-        IQueryable<Order> query = _dbSet
+        var query = _dbSet
             .Include(o => o.OrderItems)
             .Where(o => o.UserId == userId);
 
         if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
-        {
-            var lowerSearchTerm = parameters.SearchTerm.ToLower();
             query = query.Where(o =>
-                o.OrderNumber.ToLower().Contains(lowerSearchTerm) ||
-                (o.ShippingAddress != null && o.ShippingAddress.ToLower().Contains(lowerSearchTerm)));
-        }
+                o.OrderNumber.Contains(parameters.SearchTerm) ||
+                (o.ShippingAddress != null && o.ShippingAddress.Contains(parameters.SearchTerm)));
 
         var totalCount = await query.CountAsync();
 
         if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-        {
             query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
-        }
         else
-        {
             query = query.OrderByDescending(o => o.OrderDate);
-        }
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
@@ -65,25 +58,21 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
 
         if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
         {
-            var lowerSearchTerm = parameters.SearchTerm.ToLower();
+            var lowerSearchTerm = parameters.SearchTerm;
             query = query.Where(o =>
-                o.OrderNumber.ToLower().Contains(lowerSearchTerm) ||
-                (o.ShippingAddress != null && o.ShippingAddress.ToLower().Contains(lowerSearchTerm)) ||
-                (o.User.Email != null && o.User.Email.ToLower().Contains(lowerSearchTerm)) ||
-                (o.User.FirstName.ToLower().Contains(lowerSearchTerm)) ||
-                (o.User.LastName.ToLower().Contains(lowerSearchTerm)));
+                o.OrderNumber.Contains(lowerSearchTerm) ||
+                (o.ShippingAddress != null && o.ShippingAddress.Contains(lowerSearchTerm)) ||
+                (o.User.Email != null && o.User.Email.Contains(lowerSearchTerm)) ||
+                o.User.FirstName.Contains(lowerSearchTerm) ||
+                o.User.LastName.Contains(lowerSearchTerm));
         }
 
         var totalCount = await query.CountAsync();
 
         if (!string.IsNullOrWhiteSpace(parameters.SortBy))
-        {
             query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
-        }
         else
-        {
             query = query.OrderByDescending(o => o.OrderDate);
-        }
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)

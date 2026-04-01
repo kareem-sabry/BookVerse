@@ -14,13 +14,13 @@ namespace BookVerse.Tests.Unit.Services;
 
 public class AccountServiceTests
 {
-    private readonly Mock<RoleManager<IdentityRole<Guid>>> _mockRoleManager;
-    private readonly Mock<UserManager<User>> _mockUserManager;
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
     private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<ILogger<AccountService>> _mockLogger;
+    private readonly Mock<RoleManager<IdentityRole<Guid>>> _mockRoleManager;
     private readonly Mock<IAuthTokenProcessor> _mockTokenProcessor;
-    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
+    private readonly Mock<UserManager<User>> _mockUserManager;
+    private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly AccountService _sut;
 
     public AccountServiceTests()

@@ -5,8 +5,6 @@ namespace BookVerse.Core.Entities;
 
 public class OrderItem : IAuditable, IEntity
 {
-    [Key] public int Id { get; set; }
-
     public int OrderId { get; set; }
     public Order Order { get; set; } = null!;
 
@@ -25,4 +23,5 @@ public class OrderItem : IAuditable, IEntity
     [MaxLength(100)] public string? CreatedBy { get; set; }
 
     [MaxLength(100)] public string? UpdatedBy { get; set; }
+    [Key] public int Id { get; set; }
 }
