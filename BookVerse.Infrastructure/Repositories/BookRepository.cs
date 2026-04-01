@@ -23,6 +23,7 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     public async Task<Book?> GetByIdWithDetailsAsync(int id)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category)
@@ -31,7 +32,8 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
 
     public async Task<PagedResult<Book>> GetPagedWithDetailsAsync(BookQueryParameters parameters)
     {
-        IQueryable<Book> query = _dbSet.Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
+        IQueryable<Book> query = _dbSet.AsNoTracking()
+            .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category);
 
