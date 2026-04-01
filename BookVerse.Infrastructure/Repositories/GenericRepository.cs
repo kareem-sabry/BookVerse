@@ -9,7 +9,7 @@ namespace BookVerse.Infrastructure.Repositories;
 
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {
-    private readonly AppDbContext _context;
+    protected readonly AppDbContext _context;
     protected readonly DbSet<T> _dbSet;
 
     public GenericRepository(AppDbContext context)
@@ -26,12 +26,12 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
 
     public virtual async Task<T?> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
     }
 
     public virtual async Task<Core.Models.PagedResult<T>> GetPagedAsync(QueryParameters parameters)
     {
-        IQueryable<T> query = _dbSet;
+        IQueryable<T> query = _dbSet.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
         {
@@ -55,7 +55,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
 
     public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
-        return await _dbSet.Where(predicate).ToListAsync();
+        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
     }
 
     public virtual async Task AddAsync(T entity)
@@ -65,8 +65,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
 
     public virtual async Task<bool> ExistsAsync(int id)
     {
-        var entity = await GetByIdAsync(id);
-        return entity != null;
+        return await _dbSet.AnyAsync(e => EF.Property<int>(e, "Id") == id);
     }
 
     public virtual async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
