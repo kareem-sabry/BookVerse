@@ -9,9 +9,9 @@ namespace BookVerse.Infrastructure.Services;
 
 public class CategoryService : ICategoryService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
     private readonly ILogger<CategoryService> _logger;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CategoryService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<CategoryService> logger)
     {
@@ -31,16 +31,6 @@ public class CategoryService : ICategoryService
             pagedCategories.CurrentPage,
             pagedCategories.PageSize
         );
-    }
-
-    public async Task<IEnumerable<CategoryListDto>> GetAllAsync()
-    {
-        var categories = await _unitOfWork.Categories.GetAllAsync();
-        var dtos = _mapper.Map<IEnumerable<CategoryListDto>>(categories);
-
-        _logger.LogInformation("Retrieved {Count} categories", dtos.Count());
-
-        return dtos;
     }
 
     public async Task<CategoryReadDto?> GetByIdAsync(int id)
@@ -109,5 +99,15 @@ public class CategoryService : ICategoryService
 
         _logger.LogInformation("Deleted category: {CategoryId}", id);
         return true;
+    }
+
+    public async Task<IEnumerable<CategoryListDto>> GetAllAsync()
+    {
+        var categories = await _unitOfWork.Categories.GetAllAsync();
+        var dtos = _mapper.Map<IEnumerable<CategoryListDto>>(categories);
+
+        _logger.LogInformation("Retrieved {Count} categories", dtos.Count());
+
+        return dtos;
     }
 }

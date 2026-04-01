@@ -12,10 +12,10 @@ namespace BookVerse.Infrastructure.Services;
 
 public class OrderService : IOrderService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper;
-    private readonly ILogger<OrderService> _logger;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ILogger<OrderService> _logger;
+    private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public OrderService(
         IUnitOfWork unitOfWork,
@@ -145,13 +145,9 @@ public class OrderService : IOrderService
         Order? order;
 
         if (isAdmin)
-        {
             order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId);
-        }
         else
-        {
             order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId);
-        }
 
         if (order == null)
         {
@@ -231,10 +227,7 @@ public class OrderService : IOrderService
         }
 
         order.Status = updateDto.Status;
-        if (!string.IsNullOrWhiteSpace(updateDto.Notes))
-        {
-            order.Notes = updateDto.Notes;
-        }
+        if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
 
         _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync();

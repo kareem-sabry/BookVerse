@@ -12,12 +12,12 @@ namespace BookVerse.Tests.Unit.Services;
 
 public class CartServiceTests
 {
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-    private readonly Mock<IMapper> _mockMapper;
-    private readonly Mock<ILogger<CartService>> _mockLogger;
-    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
-    private readonly Mock<ICartRepository> _mockCartRepository;
     private readonly Mock<IBookRepository> _mockBookRepository;
+    private readonly Mock<ICartRepository> _mockCartRepository;
+    private readonly Mock<IDateTimeProvider> _mockDateTimeProvider;
+    private readonly Mock<ILogger<CartService>> _mockLogger;
+    private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly CartService _sut;
 
     public CartServiceTests()
@@ -57,7 +57,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     BookId = 1,
@@ -74,7 +74,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItemDto>
             {
-                new CartItemDto
+                new()
                 {
                     Id = 1,
                     BookId = 1,
@@ -156,7 +156,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -174,7 +174,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItemDto>
             {
-                new CartItemDto
+                new()
                 {
                     Id = 1,
                     BookId = 1,
@@ -245,7 +245,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -263,7 +263,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItemDto>
             {
-                new CartItemDto
+                new()
                 {
                     Id = 1,
                     BookId = 1,
@@ -338,7 +338,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = 1,
                     CartId = 1,
@@ -356,7 +356,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItemDto>
             {
-                new CartItemDto
+                new()
                 {
                     Id = 1,
                     BookId = 1,
@@ -511,7 +511,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem
+                new()
                 {
                     Id = cartItemId,
                     CartId = 1,
@@ -529,7 +529,7 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItemDto>
             {
-                new CartItemDto
+                new()
                 {
                     Id = cartItemId,
                     BookId = 1,
@@ -767,8 +767,8 @@ public class CartServiceTests
             UserId = userId,
             CartItems = new List<CartItem>
             {
-                new CartItem { Id = 1, CartId = 1, BookId = 1, Quantity = 2 },
-                new CartItem { Id = 2, CartId = 1, BookId = 2, Quantity = 3 }
+                new() { Id = 1, CartId = 1, BookId = 1, Quantity = 2 },
+                new() { Id = 2, CartId = 1, BookId = 2, Quantity = 3 }
             }
         };
 

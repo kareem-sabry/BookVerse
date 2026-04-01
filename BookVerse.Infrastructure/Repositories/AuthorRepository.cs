@@ -37,9 +37,7 @@ public class AuthorRepository : GenericRepository<Author>, IAuthorRepository
 
     protected override IQueryable<Author> ApplySearch(IQueryable<Author> query, string searchTerm)
     {
-        var lowerSearchTerm = searchTerm.ToLower();
-
         return query.Where(a =>
-            a.FirstName.ToLower().Contains(lowerSearchTerm) || a.LastName.ToLower().Contains(lowerSearchTerm));
+            a.FirstName.Contains(searchTerm) || a.LastName.Contains(searchTerm));
     }
 }

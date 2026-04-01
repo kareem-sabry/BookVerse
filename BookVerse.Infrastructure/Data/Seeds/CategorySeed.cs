@@ -83,7 +83,7 @@ public static class CategorySeed
             {
                 Id = 15, Name = "Magical Realism", CreatedAtUtc = now, UpdatedAtUtc = now, CreatedBy = "System",
                 UpdatedBy = "System"
-            },
+            }
         };
     }
 }

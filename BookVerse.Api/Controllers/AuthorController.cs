@@ -115,13 +115,11 @@ public class AuthorController : ControllerBase
         var updated = await _service.UpdateAsync(id, authorDto);
 
         if (!updated)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.AuthorNotFound
             });
-        }
 
         return NoContent();
     }
@@ -144,13 +142,11 @@ public class AuthorController : ControllerBase
 
         var deleted = await _service.DeleteAsync(id);
         if (!deleted)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.AuthorNotFound
             });
-        }
 
         return NoContent();
     }

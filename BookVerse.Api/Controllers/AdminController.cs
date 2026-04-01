@@ -39,13 +39,11 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetUserById(Guid userId)
     {
         if (userId == Guid.Empty)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         var user = await _adminService.GetUserByIdAsync(userId);
         if (user == null)
@@ -67,23 +65,19 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> MakeUserAdmin(Guid userId)
     {
         if (userId == Guid.Empty)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(currentAdminEmail))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var response = await _adminService.MakeUserAdminAsync(userId, currentAdminEmail);
 
@@ -107,7 +101,7 @@ public class AdminController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        var currentAdminIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var currentAdminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
 
         if (string.IsNullOrWhiteSpace(currentAdminIdClaim) ||

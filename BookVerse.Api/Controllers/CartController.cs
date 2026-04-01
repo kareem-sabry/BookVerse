@@ -34,23 +34,19 @@ public class CartController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var cart = await _cartService.GetCartByUserIdAsync(userId);
         if (cart == null)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = "Cart is empty"
             });
-        }
 
         return Ok(cart);
     }
@@ -77,13 +73,11 @@ public class CartController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         try
         {
@@ -116,13 +110,11 @@ public class CartController : ControllerBase
     public async Task<IActionResult> UpdateCartItem(int cartItemId, [FromBody] CartItemUpdate cartItemUpdate)
     {
         if (cartItemId <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         if (!ModelState.IsValid)
         {
@@ -140,26 +132,22 @@ public class CartController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         try
         {
             var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate);
 
             if (cart == null)
-            {
                 return NotFound(new BasicResponse
                 {
                     Succeeded = false,
                     Message = "Cart item not found"
                 });
-            }
 
             return Ok(cart);
         }
@@ -189,31 +177,24 @@ public class CartController : ControllerBase
     public async Task<IActionResult> RemoveCartItem(int cartItemId)
     {
         if (cartItemId <= 0)
-        {
             return BadRequest(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        }
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var response = await _cartService.RemoveCartItemAsync(userId, cartItemId);
 
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return NotFound(response);
     }
@@ -226,13 +207,11 @@ public class CartController : ControllerBase
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var response = await _cartService.ClearCartAsync(userId);
         return Ok(response);

@@ -32,17 +32,11 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+        if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var response = await _accountService.RegisterAsync(registerRequest);
 
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
     }
@@ -68,10 +62,7 @@ public class AuthController : ControllerBase
         }
 
         var response = await _accountService.LoginAsync(loginRequest);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
     }
@@ -96,10 +87,7 @@ public class AuthController : ControllerBase
         }
 
         var response = await _accountService.RefreshTokenAsync(refreshTokenRequest);
-        if (!response.Succeeded)
-        {
-            return Unauthorized(response);
-        }
+        if (!response.Succeeded) return Unauthorized(response);
 
         return Ok(response);
     }
@@ -113,19 +101,14 @@ public class AuthController : ControllerBase
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
-        {
             return BadRequest(new LogoutResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var response = await _accountService.LogoutAsync(email);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
     }
@@ -139,13 +122,11 @@ public class AuthController : ControllerBase
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
-        {
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var user = await _accountService.GetCurrentUserAsync(email);
         if (user == null)
@@ -199,10 +180,7 @@ public class AuthController : ControllerBase
         }
 
         var response = await _accountService.ResetPasswordAsync(request);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
+        if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
     }
@@ -216,19 +194,14 @@ public class AuthController : ControllerBase
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
-        {
             return BadRequest(new LogoutResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
-        }
 
         var result = await _accountService.DeleteMyAccountAsync(email);
-        if (result.Succeeded)
-        {
-            return Ok(result);
-        }
+        if (result.Succeeded) return Ok(result);
 
         return BadRequest(result);
     }

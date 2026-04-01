@@ -117,13 +117,11 @@ public class BookController : ControllerBase
         var updated = await _booksService.UpdateAsync(id, bookDto);
 
         if (!updated)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.BookNotFound
             });
-        }
 
         return NoContent();
     }
@@ -146,13 +144,11 @@ public class BookController : ControllerBase
         var deleted = await _booksService.DeleteAsync(id);
 
         if (!deleted)
-        {
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.BookNotFound
             });
-        }
 
         return NoContent();
     }

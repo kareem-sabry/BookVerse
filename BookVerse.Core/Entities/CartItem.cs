@@ -5,8 +5,6 @@ namespace BookVerse.Core.Entities;
 
 public class CartItem : IAuditable, IEntity
 {
-    [Key] public int Id { get; set; }
-
     public int CartId { get; set; }
     public Cart Cart { get; set; } = null!;
 
@@ -24,4 +22,5 @@ public class CartItem : IAuditable, IEntity
     [MaxLength(100)] public string? CreatedBy { get; set; }
 
     [MaxLength(100)] public string? UpdatedBy { get; set; }
+    [Key] public int Id { get; set; }
 }
