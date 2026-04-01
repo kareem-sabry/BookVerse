@@ -54,10 +54,10 @@ public class AuthController : ControllerBase
             var errors = ModelState.Values.SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .ToList();
-            return BadRequest(new RegisterResponse
+            return BadRequest(new LoginResponse
             {
                 Succeeded = false,
-                Errors = errors
+                Message = string.Join("; ", errors)
             });
         }
 
