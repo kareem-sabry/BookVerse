@@ -29,10 +29,20 @@ public class GlobalExceptionHandler : IExceptionHandler
             _ => (StatusCodes.Status500InternalServerError, "Internal server error")
         };
 
-        _logger.LogError(exception,
-            "Exception occurred: {Message} | Status: {StatusCode}",
-            exception.Message,
-            statusCode);
+        if (statusCode >= StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogError(exception,
+                "Unhandled server error: {Message} | Status: {StatusCode}",
+                exception.Message,
+                statusCode);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Client error: {Message} | Status: {StatusCode}",
+                exception.Message,
+                statusCode);
+        }
 
         var problemDetails = new ProblemDetails
         {
