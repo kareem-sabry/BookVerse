@@ -80,7 +80,12 @@ public class OrderService : IOrderService
         await _unitOfWork.Orders.AddAsync(order);
         await _unitOfWork.SaveChangesAsync();
 
-        // Create order items and update book stock
+// Create order items and update book stock
+// Books were already fetched during stock validation; build a lookup to avoid N+1
+        var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
+        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id)))
+            .ToDictionary(b => b.Id);
+
         foreach (var cartItem in cart.CartItems)
         {
             var orderItem = new OrderItem
@@ -94,8 +99,7 @@ public class OrderService : IOrderService
             await _unitOfWork.OrderItems.AddAsync(orderItem);
 
             // Reduce book stock
-            var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId);
-            if (book != null)
+            if (books.TryGetValue(cartItem.BookId, out var book))
             {
                 book.QuantityInStock -= cartItem.Quantity;
                 _unitOfWork.Books.Update(book);
@@ -191,10 +195,13 @@ public class OrderService : IOrderService
         _unitOfWork.Orders.Update(order);
 
         // Restore book stock
+        var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
+        var booksToRestore = (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id)))
+            .ToDictionary(b => b.Id);
+
         foreach (var orderItem in order.OrderItems)
         {
-            var book = await _unitOfWork.Books.GetByIdAsync(orderItem.BookId);
-            if (book != null)
+            if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
             {
                 book.QuantityInStock += orderItem.Quantity;
                 _unitOfWork.Books.Update(book);
