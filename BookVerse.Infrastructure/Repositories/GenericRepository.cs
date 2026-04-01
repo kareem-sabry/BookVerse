@@ -63,7 +63,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         _dbSet.Remove(entity);
     }
 
-    public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    public async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
         return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
     }
