@@ -14,8 +14,7 @@ public class CartService : ICartService
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CartService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<CartService> logger,
-        IDateTimeProvider dateTimeProvider)
+    public CartService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<CartService> logger)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
@@ -79,6 +78,7 @@ public class CartService : ICartService
                 _logger.LogWarning(
                     "Insufficient stock for book: {BookId}. Requested total: {Requested}, Available: {Available}",
                     cartItem.BookId, newQuantity, book.QuantityInStock);
+                await _unitOfWork.RollbackTransactionAsync();
                 throw new InvalidOperationException(ErrorMessages.InsufficientStock);
             }
 
