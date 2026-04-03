@@ -3,6 +3,7 @@ using BookVerse.Application.Interfaces;
 using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Dynamic.Core;
 
 namespace BookVerse.Infrastructure.Repositories;
 
@@ -90,6 +91,6 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     protected virtual IQueryable<T> ApplySorting(IQueryable<T> query, string sortBy, bool descending)
     {
         var orderBy = descending ? $"{sortBy} descending" : sortBy;
-        return query.OrderBy<T, object>(orderBy);
+        return query.OrderBy(orderBy);
     }
 }
