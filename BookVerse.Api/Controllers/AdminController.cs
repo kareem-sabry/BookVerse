@@ -6,7 +6,7 @@ using BookVerse.Core.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace SmartExpense.Api.Controllers;
+namespace BookVerse.Api.Controllers;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
@@ -57,6 +57,12 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetUserById(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _adminService.GetUserByIdAsync(userId);
+        if (user == null)
+            return NotFound(new BasicResponse
+            {
+                Succeeded = false,
+                Message = ErrorMessages.UserNotFound
+            });
         return Ok(user);
     }
 
@@ -81,6 +87,8 @@ public class AdminController : ControllerBase
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
         var response = await _adminService.MakeUserAdminAsync(userId, currentAdminEmail);
+        if (!response.Succeeded)
+            return BadRequest(response);
         return Ok(response);
     }
 
@@ -105,6 +113,8 @@ public class AdminController : ControllerBase
     {
         var currentAdminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var response = await _adminService.RemoveAdminRoleAsync(userId, currentAdminId);
+        if (!response.Succeeded)
+            return BadRequest(response);
         return Ok(response);
     }
 
@@ -130,6 +140,8 @@ public class AdminController : ControllerBase
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
         var response = await _adminService.DeleteUserAsync(userId, currentAdminEmail);
+        if (!response.Succeeded)
+            return BadRequest(response);
         return Ok(response);
     }
 }
