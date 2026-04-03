@@ -104,13 +104,19 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
 
     private IQueryable<Book> ApplySearch(IQueryable<Book> query, string searchTerm)
     {
+        // Trim whitespace before applying search.
+        // Contains() case-sensitivity depends on database collation.
+        // This project assumes SQL Server's default CI_AS (case-insensitive, accent-sensitive) collation,
+        // which makes Contains() case-insensitive at the DB level without any extra configuration.
+        var term = searchTerm.Trim();
+
         return query.Where(b =>
-            b.Title.Contains(searchTerm) ||
-            (b.Description != null && b.Description.Contains(searchTerm)) ||
-            (b.ISBN != null && b.ISBN.Contains(searchTerm)) ||
+            b.Title.Contains(term) ||
+            (b.Description != null && b.Description.Contains(term)) ||
+            (b.ISBN != null && b.ISBN.Contains(term)) ||
             b.BookAuthors.Any(ba =>
-                ba.Author.FirstName.Contains(searchTerm) ||
-                ba.Author.LastName.Contains(searchTerm))
+                ba.Author.FirstName.Contains(term) ||
+                ba.Author.LastName.Contains(term))
         );
     }
 
