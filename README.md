@@ -1,5 +1,5 @@
 # BookVerse API
-
+[![CI](https://github.com/kareem-sabry/BookVerseApi/actions/workflows/ci.yml/badge.svg)](https://github.com/kareem-sabry/BookVerseApi/actions/workflows/ci.yml)
 A RESTful API for an online bookstore built with ASP.NET Core 8. Includes JWT authentication, role-based authorization, and Stripe payment integration.
 
 ## About
@@ -85,11 +85,16 @@ Pretty standard clean architecture setup. Core has no dependencies, Application 
 
 ### Setup Instructions
 
-First, clone the repo:
+## Quick start (Docker)
 ```bash
-git clone https://github.com/yourusername/bookverse-api.git
-cd bookverse-api
+git clone https://github.com/kareem-sabry/BookVerseApi.git
+cd BookVerseApi
+docker-compose up --build
 ```
+
+API: `http://localhost:5000` | Swagger: `http://localhost:5000/index.html`
+
+SQL Server data persists in a Docker volume across restarts.
 
 Now for the configuration. I'm using user secrets for sensitive data instead of putting it in appsettings.json (please don't commit your secrets to GitHub):
 
