@@ -367,7 +367,7 @@ public class AccountServiceTests
 
         var newRefreshToken = "new-refresh-token";
 
-        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken)).ReturnsAsync(existingUser);
+        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>())).ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
 
@@ -379,7 +379,7 @@ public class AccountServiceTests
         _mockUserManager.Setup(x => x.UpdateAsync(existingUser)).ReturnsAsync(IdentityResult.Success);
 
         // Act
-        var result = await _sut.RefreshTokenAsync(request);
+        var result = await _sut.RefreshTokenAsync(request, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeTrue();
@@ -412,12 +412,12 @@ public class AccountServiceTests
         };
 
 
-        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken)).ReturnsAsync(existingUser);
+        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>())).ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
 
         // Act
-        var result = await _sut.RefreshTokenAsync(request);
+        var result = await _sut.RefreshTokenAsync(request, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeFalse();

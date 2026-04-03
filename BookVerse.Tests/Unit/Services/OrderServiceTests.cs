@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Linq.Expressions;
+using AutoMapper;
 using BookVerse.Application.Dtos.Order;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
@@ -641,8 +642,10 @@ public class OrderServiceTests
         result!.Id.Should().Be(orderId);
         result.OrderNumber.Should().Be("ORD-20250104-123456");
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -678,8 +681,11 @@ public class OrderServiceTests
         result.Should().NotBeNull();
         result!.Id.Should().Be(orderId);
 
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()), Times.Once);
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockOrderRepository.Verify(
+            x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -698,7 +704,8 @@ public class OrderServiceTests
         // Assert
         result.Should().BeNull();
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
         _mockMapper.Verify(x => x.Map<OrderReadDto>(It.IsAny<Order>()), Times.Never);
     }
 
@@ -777,17 +784,23 @@ public class OrderServiceTests
             Id = orderId,
             UserId = userId,
             Status = OrderStatus.Processing,
-            OrderItems = new List<OrderItem>()
+            OrderItems = new List<OrderItem>() // empty list is fine
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
+        _mockUnitOfWork.Setup(x => x.Orders.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
+
+        // Mock Books.FindAsync to return empty list (prevent null)
+        _mockUnitOfWork.Setup(x => x.Books.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book>());
+
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
+        var result = await _sut.CancelOrderAsync(userId, orderId, CancellationToken.None);
 
         // Assert
         result.Succeeded.Should().BeTrue();

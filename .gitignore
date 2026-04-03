@@ -5,7 +5,7 @@
 *.userosscache
 *.sln.docstates
 *.DotSettings.user
-
+.env
 # JetBrider Rider
 .idea/
 *.sln.iml
