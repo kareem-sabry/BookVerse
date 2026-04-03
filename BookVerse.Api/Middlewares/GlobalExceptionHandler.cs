@@ -1,17 +1,22 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using BookVerse.Application.Interfaces;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using BookVerse.Core.Exceptions;
 
 namespace BookVerse.Api.Middlewares;
+
 public class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly IHostEnvironment _environment;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILogger<GlobalExceptionHandler> _logger;
 
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment environment)
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment environment,
+        IDateTimeProvider dateTimeProvider)
     {
         _logger = logger;
         _environment = environment;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async ValueTask<bool> TryHandleAsync(
@@ -78,8 +83,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         problemDetails.Instance = httpContext.Request.Path;
         problemDetails.Type = $"https://httpstatuses.com/{statusCode}";
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
-        problemDetails.Extensions["timestamp"] = DateTime.UtcNow;
-
+        problemDetails.Extensions["timestamp"] = _dateTimeProvider.UtcNow;
         //stack trace is only included in development
         if (_environment.IsDevelopment() && statusCode == 500)
             problemDetails.Extensions["stackTrace"] = exception.StackTrace;
