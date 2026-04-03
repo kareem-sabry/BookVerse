@@ -57,7 +57,7 @@ public static class DbInitializer
         var existingAdmin = await userManager.FindByEmailAsync(admin.Email);
         if (existingAdmin != null)
         {
-            logger.LogInformation($"Admin user {admin.Email} already exists.");
+            logger.LogInformation("Admin user {Email} already exists.", admin.Email);
             if (!await userManager.IsInRoleAsync(existingAdmin, IdentityRoleConstants.Admin))
             {
                 await userManager.AddToRoleAsync(existingAdmin, IdentityRoleConstants.Admin);
@@ -75,7 +75,7 @@ public static class DbInitializer
         if (!createResult.Succeeded)
         {
             logger.LogError("Failed to create Admin user.");
-            foreach (var error in createResult.Errors) logger.LogError($" - {error.Description}");
+            foreach (var error in createResult.Errors) logger.LogError("  - {ErrorDescription}", error.Description);
 
             return;
         }
