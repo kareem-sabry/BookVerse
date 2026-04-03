@@ -259,7 +259,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrderFromCartAsync_WithEmptyCart_ThrowsInvalidOperationException()
+    public async Task CreateOrderFromCartAsync_WithEmptyCart_ThrowsValidationException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -279,7 +279,7 @@ public class OrderServiceTests
             await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        await act.Should().ThrowAsync<ValidationException>()
             .WithMessage(ErrorMessages.EmptyCart);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
@@ -288,7 +288,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrderFromCartAsync_WithCartContainingNoItems_ThrowsInvalidOperationException()
+    public async Task CreateOrderFromCartAsync_WithCartContainingNoItems_ThrowsValidationException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -315,7 +315,7 @@ public class OrderServiceTests
             await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        await act.Should().ThrowAsync<ValidationException>()
             .WithMessage(ErrorMessages.EmptyCart);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
@@ -372,7 +372,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrderFromCartAsync_WithInsufficientStock_ThrowsInvalidOperationException()
+    public async Task CreateOrderFromCartAsync_WithInsufficientStock_ThrowsValidationException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -421,7 +421,7 @@ public class OrderServiceTests
             await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        await act.Should().ThrowAsync<ValidationException>()
             .WithMessage("Insufficient stock for book: Clean Code");
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
