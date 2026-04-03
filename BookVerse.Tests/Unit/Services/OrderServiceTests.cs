@@ -93,20 +93,20 @@ public class OrderServiceTests
             new() { Id = 2, OrderNumber = "ORD-20250103-654321" }
         };
 
-        _mockOrderRepository.Setup(x => x.GetAllOrdersAsync(parameters))
+        _mockOrderRepository.Setup(x => x.GetAllOrdersAsync(parameters, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagedOrders);
         _mockMapper.Setup(x => x.Map<IEnumerable<OrderListDto>>(orders))
             .Returns(orderDtos);
 
         // Act
-        var result = await _sut.GetAllOrdersAsync(parameters);
+        var result = await _sut.GetAllOrdersAsync(parameters, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
         result.Items.Should().HaveCount(2);
         result.TotalCount.Should().Be(2);
 
-        _mockOrderRepository.Verify(x => x.GetAllOrdersAsync(parameters), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetAllOrdersAsync(parameters, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -217,20 +217,26 @@ public class OrderServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(book1);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(2)).ReturnsAsync(book2);
-        _mockOrderRepository.Setup(x => x.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
-        _mockOrderItemRepository.Setup(x => x.AddAsync(It.IsAny<OrderItem>())).Returns(Task.CompletedTask);
-        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id)).Returns(Task.CompletedTask);
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(It.IsAny<int>())).ReturnsAsync(createdOrder);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book1, book2 });
+        _mockOrderRepository.Setup(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderItemRepository.Setup(x => x.AddAsync(It.IsAny<OrderItem>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(createdOrder);
         _mockMapper.Setup(x => x.Map<OrderReadDto>(createdOrder)).Returns(orderReadDto);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var result = await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -240,13 +246,14 @@ public class OrderServiceTests
         result.Status.Should().Be(OrderStatus.Pending);
         result.PaymentStatus.Should().Be(PaymentStatus.Pending);
 
-        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>()), Times.Once);
-        _mockOrderItemRepository.Verify(x => x.AddAsync(It.IsAny<OrderItem>()), Times.Exactly(2));
-        _mockBookRepository.Verify(x => x.Update(book1), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book2), Times.Once);
-        _mockCartRepository.Verify(x => x.ClearCartAsync(cart.Id), Times.Once);
+        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderItemRepository.Verify(x => x.AddAsync(It.IsAny<OrderItem>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _mockBookRepository.Verify(x => x.Update(book1, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book2, It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Exactly(2));
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -260,12 +267,14 @@ public class OrderServiceTests
             PaymentMethod = "Credit Card"
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var act = async () => await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var act = async () =>
+            await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -273,7 +282,7 @@ public class OrderServiceTests
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
-        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -294,19 +303,21 @@ public class OrderServiceTests
             CartItems = new List<CartItem>()
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync(emptyCart);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(emptyCart);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var act = async () => await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var act = async () =>
+            await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage(ErrorMessages.EmptyCart);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -337,20 +348,25 @@ public class OrderServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(999)).ReturnsAsync((Book?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
+        // FindAsync returns empty list — simulates book 999 not found
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book>());
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var act = async () => await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var act = async () =>
+            await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("Book with ID 999 not found");
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -390,20 +406,24 @@ public class OrderServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(book);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book });
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var act = async () => await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        var act = async () =>
+            await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Insufficient stock for book: Clean Code");
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -451,23 +471,30 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId)).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(book);
-        _mockOrderRepository.Setup(x => x.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
-        _mockOrderItemRepository.Setup(x => x.AddAsync(It.IsAny<OrderItem>())).Returns(Task.CompletedTask);
-        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id)).Returns(Task.CompletedTask);
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(It.IsAny<int>())).ReturnsAsync(createdOrder);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book });
+        _mockOrderRepository.Setup(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderItemRepository.Setup(x => x.AddAsync(It.IsAny<OrderItem>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(createdOrder);
         _mockMapper.Setup(x => x.Map<OrderReadDto>(createdOrder)).Returns(new OrderReadDto());
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        await _sut.CreateOrderFromCartAsync(userId, orderCreateDto);
+        await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
         book.QuantityInStock.Should().Be(7);
-        _mockBookRepository.Verify(x => x.Update(book), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -527,13 +554,13 @@ public class OrderServiceTests
             }
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrdersAsync(userId, parameters))
+        _mockOrderRepository.Setup(x => x.GetUserOrdersAsync(userId, parameters, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagedOrders);
         _mockMapper.Setup(x => x.Map<IEnumerable<OrderListDto>>(orders))
             .Returns(orderDtos);
 
         // Act
-        var result = await _sut.GetUserOrdersAsync(userId, parameters);
+        var result = await _sut.GetUserOrdersAsync(userId, parameters, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -542,7 +569,8 @@ public class OrderServiceTests
         result.CurrentPage.Should().Be(1);
         result.PageSize.Should().Be(10);
 
-        _mockOrderRepository.Verify(x => x.GetUserOrdersAsync(userId, parameters), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetUserOrdersAsync(userId, parameters, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -559,13 +587,13 @@ public class OrderServiceTests
         var emptyOrders = new List<Order>();
         var pagedOrders = new PagedResult<Order>(emptyOrders, 0, 1, 10);
 
-        _mockOrderRepository.Setup(x => x.GetUserOrdersAsync(userId, parameters))
+        _mockOrderRepository.Setup(x => x.GetUserOrdersAsync(userId, parameters, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pagedOrders);
         _mockMapper.Setup(x => x.Map<IEnumerable<OrderListDto>>(emptyOrders))
             .Returns(new List<OrderListDto>());
 
         // Act
-        var result = await _sut.GetUserOrdersAsync(userId, parameters);
+        var result = await _sut.GetUserOrdersAsync(userId, parameters, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -601,20 +629,22 @@ public class OrderServiceTests
             TotalAmount = 99.97m
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(orderId);
         result.OrderNumber.Should().Be("ORD-20250104-123456");
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId), Times.Once);
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -639,19 +669,22 @@ public class OrderServiceTests
             OrderNumber = "ORD-20250104-123456"
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, true);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>(), true);
 
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(orderId);
 
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId), Times.Once);
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _mockOrderRepository.Verify(
+            x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -661,16 +694,17 @@ public class OrderServiceTests
         var userId = Guid.NewGuid();
         var orderId = 999;
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().BeNull();
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
+            Times.Once);
         _mockMapper.Verify(x => x.Map<OrderReadDto>(It.IsAny<Order>()), Times.Never);
     }
 
@@ -712,15 +746,18 @@ public class OrderServiceTests
             }
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(book);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book });
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -729,8 +766,8 @@ public class OrderServiceTests
         order.Status.Should().Be(OrderStatus.Cancelled);
         book.QuantityInStock.Should().Be(8);
 
-        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
 
@@ -749,14 +786,14 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeTrue();
@@ -778,13 +815,13 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -794,7 +831,7 @@ public class OrderServiceTests
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -812,13 +849,13 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeFalse();
@@ -832,13 +869,13 @@ public class OrderServiceTests
         var userId = Guid.NewGuid();
         var orderId = 999;
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -846,7 +883,7 @@ public class OrderServiceTests
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -871,24 +908,26 @@ public class OrderServiceTests
             }
         };
 
-        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId))
+        _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(book1);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(2)).ReturnsAsync(book2);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book1, book2 });
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId);
+        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeTrue();
         book1.QuantityInStock.Should().Be(7);
         book2.QuantityInStock.Should().Be(13);
 
-        _mockBookRepository.Verify(x => x.Update(book1), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book2), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book1, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book2, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -913,12 +952,12 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -927,7 +966,7 @@ public class OrderServiceTests
         order.Status.Should().Be(OrderStatus.Shipped);
         order.Notes.Should().Be("Order shipped via FedEx");
 
-        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
     }
 
@@ -941,18 +980,18 @@ public class OrderServiceTests
             Status = OrderStatus.Shipped
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -974,12 +1013,12 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdateOrderStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeTrue();
@@ -1007,12 +1046,12 @@ public class OrderServiceTests
             PaymentStatus = PaymentStatus.Pending
         };
 
-        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -1020,7 +1059,7 @@ public class OrderServiceTests
         result.Message.Should().Be("Payment status updated successfully");
         order.PaymentStatus.Should().Be(PaymentStatus.Completed);
 
-        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
     }
 
@@ -1034,18 +1073,18 @@ public class OrderServiceTests
             PaymentStatus = PaymentStatus.Completed
         };
 
-        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -1065,12 +1104,12 @@ public class OrderServiceTests
             PaymentStatus = PaymentStatus.Completed
         };
 
-        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto);
+        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
 
         // Assert
         result.Succeeded.Should().BeTrue();
