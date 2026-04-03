@@ -1,243 +1,220 @@
-# BookVerse API
+<div align="center">
+
+# 📚 BookVerse API
+
 [![CI](https://github.com/kareem-sabry/BookVerseApi/actions/workflows/ci.yml/badge.svg)](https://github.com/kareem-sabry/BookVerseApi/actions/workflows/ci.yml)
-A RESTful API for an online bookstore built with ASP.NET Core 8. Includes JWT authentication, role-based authorization, and Stripe payment integration.
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![EF Core](https://img.shields.io/badge/EF%20Core-8.0-512BD4)](https://learn.microsoft.com/en-us/ef/core/)
+[![Stripe](https://img.shields.io/badge/Payments-Stripe-635BFF?logo=stripe)](https://stripe.com)
 
-## About
+A production-ready RESTful API for an online bookstore — built with ASP.NET Core 8, Clean Architecture, JWT authentication, and Stripe payments.
 
-This is a backend system I built for managing an online bookstore. The architecture follows clean architecture principles - using repository pattern, unit of work, dependency injection, all that good stuff. I wanted something that wouldn't turn into a mess as it grows, so I spent some time getting the foundation right.
+[Getting Started](#-getting-started) · [API Reference](#-api-reference) · [Architecture](#-architecture) · [Contributing](#-contributing)
 
-The project handles everything you'd expect from a bookstore API: user accounts, browsing books, managing inventory, and processing payments through Stripe. It's fairly complete but there's always room for improvement.
+</div>
 
-## What it does
+---
 
-**User Authentication**
-- JWT tokens with refresh token support
-- Role-based permissions (Admin and User roles)
-- Password hashing through ASP.NET Core Identity
-- Password reset via email
-- Token refresh when they expire
+## ✨ Features
 
-**Managing Books**
-- Full CRUD for books, authors, and categories
-- Search and filtering (by price, author, category, publication date)
-- Pagination because nobody wants to load 10,000 books at once
-- Books can have multiple authors and categories (many-to-many relationships)
-- Stock tracking for inventory management
+| Area | What's included |
+|------|----------------|
+| **Auth** | JWT + refresh tokens, role-based access (Admin / User), password reset via email |
+| **Books** | Full CRUD, search & filtering, pagination, sorting, many-to-many authors & categories |
+| **Orders** | Order creation & history, stock management, Stripe payment intent flow |
+| **Admin** | User management, role promotion/demotion, account deletion |
+| **Security** | Password hashing via ASP.NET Identity, CORS, HTTPS, security headers, XSS protection, parameterized queries |
 
-**Payments**
-- Stripe integration for handling payments
-- Order creation and tracking
-- Payment status updates
-- Stock automatically decreases when orders go through
-- Users can view their order history
+---
 
-**Architecture stuff**
-- Clean Architecture (Core, Application, Infrastructure, API layers)
-- Repository Pattern for data access
-- Unit of Work for managing transactions
-- AutoMapper for DTOs
-- Entity Framework Core with Code First migrations
+## 🏗 Architecture
 
-## Tech Stack
-
-Built with:
-- ASP.NET Core 8.0
-- C# 12.0
-- SQL Server with Entity Framework Core
-- JWT Bearer tokens + ASP.NET Core Identity
-- Stripe API
-- Swagger/OpenAPI for documentation
-- AutoMapper
-
-## Project Layout
+Clean Architecture with four clearly separated layers — Core has zero dependencies, each outer layer only depends inward.
 
 ```
 BookVerse/
-├── BookVerse.Core/              # Domain layer - entities, interfaces
-│   ├── Entities/
-│   ├── Interfaces/
-│   ├── Enums/
-│   ├── Constants/
-│   └── Models/
-├── BookVerse.Application/       # Application layer - business logic, DTOs
-│   ├── Dtos/
-│   └── Interfaces/
-├── BookVerse.Infrastructure/    # Infrastructure - data access, external services
-│   ├── Data/
-│   ├── Repositories/
-│   ├── Services/
-│   └── Profiles/
-└── BookVerseApi/                # Presentation layer - controllers, middleware
-    ├── Controllers/
-    └── Middlewares/
+├── BookVerse.Core/           # Domain — entities, interfaces, enums
+├── BookVerse.Application/    # Business logic — DTOs, service interfaces
+├── BookVerse.Infrastructure/ # Data access — EF Core, repositories, services
+└── BookVerseApi/             # Presentation — controllers, middleware
 ```
 
-Pretty standard clean architecture setup. Core has no dependencies, Application depends on Core, Infrastructure implements interfaces from Core/Application, and the API layer ties everything together.
+**Patterns used:** Repository Pattern · Unit of Work · Dependency Injection · AutoMapper · Code First Migrations
 
-## Getting it Running
+---
 
-### What you need
+## 🚀 Getting Started
 
-- .NET 8.0 SDK
-- SQL Server (Express works fine if you don't have the full version)
-- A Stripe account (free test account works)
-- Git
+### Prerequisites
 
-### Setup Instructions
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download)
+- SQL Server (Express is fine)
+- A [Stripe](https://stripe.com) test account (free)
 
-## Quick start (Docker)
+### Option 1 — Docker (recommended)
+
 ```bash
+# 1. Clone the repo
 git clone https://github.com/kareem-sabry/BookVerseApi.git
 cd BookVerseApi
+
+# 2. Copy the example env file and fill in your values
+cp .env.example .env
+
+# 3. Start everything
 docker-compose up --build
 ```
 
-API: `http://localhost:5000` | Swagger: `http://localhost:5000/index.html`
+| | URL |
+|---|---|
+| API | `http://localhost:5000` |
+| Swagger UI | `http://localhost:5000/index.html` |
 
-SQL Server data persists in a Docker volume across restarts.
+> SQL Server data persists in a Docker volume between restarts.
 
-Now for the configuration. I'm using user secrets for sensitive data instead of putting it in appsettings.json (please don't commit your secrets to GitHub):
+---
+
+### Option 2 — Local Setup
+
+**1. Configure secrets**
 
 ```bash
 cd BookVerseApi
 dotnet user-secrets init
 
-# Database connection - adjust this for your SQL Server setup
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=.;Database=BookVerseDb;Trusted_Connection=True;TrustServerCertificate=True"
+# Database
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Server=.;Database=BookVerseDb;Trusted_Connection=True;TrustServerCertificate=True"
 
-# JWT settings - make sure the secret is at least 32 characters
-dotnet user-secrets set "JwtOptions:Secret" "your-super-secret-key-min-32-characters-long"
-dotnet user-secrets set "JwtOptions:Issuer" "BookVerseApi"
-dotnet user-secrets set "JwtOptions:Audience" "BookVerseClient"
+# JWT  (secret must be at least 32 characters)
+dotnet user-secrets set "JwtOptions:Secret"                  "your-super-secret-key-min-32-chars"
+dotnet user-secrets set "JwtOptions:Issuer"                  "BookVerseApi"
+dotnet user-secrets set "JwtOptions:Audience"                "BookVerseClient"
 dotnet user-secrets set "JwtOptions:ExpirationTimeInMinutes" "60"
 
-# Default admin user - change these before deploying to production
-dotnet user-secrets set "AdminUser:Email" "admin@bookverse.com"
-dotnet user-secrets set "AdminUser:Password" "Admin@123456"
+# Default admin (change before deploying to production)
+dotnet user-secrets set "AdminUser:Email"     "admin@bookverse.com"
+dotnet user-secrets set "AdminUser:Password"  "Admin@123456"
 dotnet user-secrets set "AdminUser:FirstName" "Admin"
-dotnet user-secrets set "AdminUser:LastName" "User"
+dotnet user-secrets set "AdminUser:LastName"  "User"
 
-# Stripe keys - get these from your Stripe dashboard
+# Stripe (from your Stripe dashboard)
 dotnet user-secrets set "Stripe:PublishableKey" "pk_test_your_key"
-dotnet user-secrets set "Stripe:SecretKey" "sk_test_your_key"
+dotnet user-secrets set "Stripe:SecretKey"      "sk_test_your_key"
 
-# Email settings (optional, only needed for password resets)
-dotnet user-secrets set "EmailOptions:SmtpHost" "smtp.gmail.com"
-dotnet user-secrets set "EmailOptions:SmtpPort" "587"
+# Email / SMTP (optional — only needed for password reset)
+dotnet user-secrets set "EmailOptions:SmtpHost"     "smtp.gmail.com"
+dotnet user-secrets set "EmailOptions:SmtpPort"     "587"
 dotnet user-secrets set "EmailOptions:SmtpUsername" "your-email@gmail.com"
 dotnet user-secrets set "EmailOptions:SmtpPassword" "your-app-password"
-dotnet user-secrets set "EmailOptions:FromEmail" "noreply@bookverse.com"
-dotnet user-secrets set "EmailOptions:FromName" "BookVerse"
+dotnet user-secrets set "EmailOptions:FromEmail"    "noreply@bookverse.com"
+dotnet user-secrets set "EmailOptions:FromName"     "BookVerse"
 ```
 
-Note: If you're using Gmail for SMTP, you'll need to generate an app password. Regular password won't work with 2FA enabled.
+> **Gmail users:** generate an [App Password](https://support.google.com/accounts/answer/185833) — your regular password won't work when 2FA is enabled.
 
-Run the migrations to create the database:
+**2. Apply migrations**
+
 ```bash
 dotnet ef database update --project ../BookVerse.Infrastructure --startup-project .
 ```
 
-If that command fails, make sure you have the EF Core tools installed:
+If `dotnet ef` isn't found:
 ```bash
 dotnet tool install --global dotnet-ef
 ```
 
-Start the application:
+**3. Run**
+
 ```bash
 dotnet run
 ```
 
-The API should start up at `https://localhost:7xxx/` (the port might be different). Navigate there and you'll see the Swagger UI with all the endpoints.
+The API starts at `https://localhost:7xxx/`. Open that URL to see the Swagger UI.
 
-## API Reference
+---
 
-Here's what's available. Most GET endpoints don't require authentication, but POST/PUT/DELETE usually do.
+## 📖 API Reference
 
-### Authentication
+> Most `GET` endpoints are public. `POST` / `PUT` / `DELETE` require authentication unless noted.
 
-- `POST /api/auth/register` - Create a new account
-- `POST /api/auth/login` - Login and get JWT token
-- `POST /api/auth/refresh-token` - Get a new access token using refresh token
-- `POST /api/auth/logout` - Logout (requires auth)
-- `GET /api/auth/me` - Get your user profile (requires auth)
-- `POST /api/auth/forgot-password` - Request a password reset email
-- `POST /api/auth/reset-password` - Reset password using the token from email
-- `DELETE /api/auth/delete-account` - Delete your account (requires auth)
+### Authentication — `/api/auth`
 
-### Books
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/register` | — | Create a new account |
+| `POST` | `/login` | — | Login, returns JWT + refresh token |
+| `POST` | `/refresh-token` | — | Exchange refresh token for a new access token |
+| `POST` | `/logout` | ✅ | Logout |
+| `GET` | `/me` | ✅ | Get your profile |
+| `POST` | `/forgot-password` | — | Request a password reset email |
+| `POST` | `/reset-password` | — | Reset password with emailed token |
+| `DELETE` | `/delete-account` | ✅ | Delete your account |
 
-- `GET /api/book` - List books with pagination
-- `GET /api/book/{id}` - Get a specific book
-- `POST /api/book` - Add a new book (admin only)
-- `PUT /api/book/{id}` - Update book details (admin only)
-- `DELETE /api/book/{id}` - Remove a book (admin only)
+### Books — `/api/book`
 
-### Authors
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/` | — | List books (paginated, filterable) |
+| `GET` | `/{id}` | — | Get a single book |
+| `POST` | `/` | 🔒 Admin | Add a book |
+| `PUT` | `/{id}` | 🔒 Admin | Update a book |
+| `DELETE` | `/{id}` | 🔒 Admin | Delete a book |
 
-- `GET /api/author` - List authors with pagination
-- `GET /api/author/{id}` - Get author details
-- `POST /api/author` - Add a new author (admin only)
-- `PUT /api/author/{id}` - Update author (admin only)
-- `DELETE /api/author/{id}` - Remove author (admin only)
+### Authors — `/api/author` · Categories — `/api/category`
 
-### Categories
+Same CRUD shape as Books. `GET` endpoints are public; write operations require Admin.
 
-- `GET /api/category` - List all categories
-- `GET /api/category/{id}` - Get category details
-- `POST /api/category` - Add category (admin only)
-- `PUT /api/category/{id}` - Update category (admin only)
-- `DELETE /api/category/{id}` - Remove category (admin only)
+### Orders — `/api/order`
 
-### Orders
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/` | ✅ | Create an order |
+| `GET` | `/{id}` | ✅ | Get order details |
+| `GET` | `/my-orders` | ✅ | Your order history |
+| `POST` | `/{id}/payment` | ✅ | Create a Stripe payment intent |
 
-- `POST /api/order` - Create a new order (requires auth)
-- `GET /api/order/{id}` - Get order details (requires auth)
-- `GET /api/order/my-orders` - List your order history (requires auth)
-- `POST /api/order/{id}/payment` - Create Stripe payment intent (requires auth)
+### Admin — `/api/admin` *(Admin role required)*
 
-### Admin Operations
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/users` | List all users |
+| `GET` | `/users/{id}` | Get user details |
+| `POST` | `/users/{id}/make-admin` | Promote to Admin |
+| `POST` | `/users/{id}/remove-admin` | Demote to User |
+| `DELETE` | `/users/{id}` | Delete a user |
 
-These all require admin role:
-- `GET /api/admin/users` - List all users
-- `GET /api/admin/users/{id}` - Get user details
-- `POST /api/admin/users/{id}/make-admin` - Promote user to admin
-- `POST /api/admin/users/{id}/remove-admin` - Remove admin role from user
-- `DELETE /api/admin/users/{id}` - Delete a user account
+---
 
-## Query Parameters
+## 🔎 Query Parameters
 
-Most list endpoints support these query parameters. Mix and match as needed:
+All list endpoints support a consistent set of query parameters:
 
-**Pagination:**
 ```
+# Pagination
 ?pageNumber=1&pageSize=10
-```
-Default page size is 10, but you can adjust it. I'd recommend keeping it under 100 to avoid performance issues.
 
-**Sorting:**
-```
+# Sorting
 ?sortBy=Title&sortDescending=false
-```
-You can sort by most properties. Check the Swagger docs to see what's available for each endpoint.
 
-**Searching:**
-```
+# Search
 ?searchTerm=harry+potter
-```
-Searches across relevant fields (title, description, etc.)
 
-**Filtering (Books):**
-```
+# Book-specific filters
 ?minPrice=10&maxPrice=50&authorId=1&categoryId=2&publishedAfter=2020-01-01
 ```
-All filters are optional. Combine them however you want.
 
-## Example Usage
+> Recommended max `pageSize` is 100 to avoid performance issues.
 
-Here are some common request examples. Check Swagger for the complete schemas.
+---
 
-**Register a new user:**
-```json
+## 💡 Example Requests
+
+<details>
+<summary><strong>Register a new user</strong></summary>
+
+```http
 POST /api/auth/register
 Content-Type: application/json
 
@@ -249,11 +226,13 @@ Content-Type: application/json
   "role": 1
 }
 ```
+`role`: `1` = User, `2` = Admin. Password must include uppercase, lowercase, number, and special character.
+</details>
 
-The password needs to meet the default Identity requirements (uppercase, lowercase, number, special char). Role 1 is User, role 2 is Admin.
+<details>
+<summary><strong>Login</strong></summary>
 
-**Login:**
-```json
+```http
 POST /api/auth/login
 Content-Type: application/json
 
@@ -262,33 +241,31 @@ Content-Type: application/json
   "password": "Password@123"
 }
 ```
+Returns an access token and refresh token. Store them securely — avoid `localStorage`.
+</details>
 
-This returns an access token and a refresh token. Store both securely (not in localStorage if you can help it).
+<details>
+<summary><strong>Create an order</strong></summary>
 
-**Create an order:**
-```json
+```http
 POST /api/order
 Authorization: Bearer {your_access_token}
 Content-Type: application/json
 
 {
   "items": [
-    {
-      "bookId": 1,
-      "quantity": 2
-    },
-    {
-      "bookId": 3,
-      "quantity": 1
-    }
+    { "bookId": 1, "quantity": 2 },
+    { "bookId": 3, "quantity": 1 }
   ]
 }
 ```
+Order total is calculated server-side. Use `POST /api/order/{id}/payment` afterwards to charge the customer via Stripe.
+</details>
 
-The order total gets calculated server-side based on current book prices. After creating the order, use the payment endpoint to actually charge the customer.
+<details>
+<summary><strong>Add a book (Admin only)</strong></summary>
 
-**Add a book (admin only):**
-```json
+```http
 POST /api/book
 Authorization: Bearer {admin_token}
 Content-Type: application/json
@@ -304,72 +281,76 @@ Content-Type: application/json
   "categoryIds": [2, 5]
 }
 ```
-
-Make sure the author and category IDs actually exist, or you'll get a validation error.
-
-## Security Notes
-
-I've tried to implement security best practices:
-
-- Passwords are hashed using ASP.NET Core Identity (never stored in plain text)
-- JWT tokens for stateless authentication
-- Refresh tokens stored separately (you could move these to Redis in production)
-- Role-based authorization throughout
-- CORS properly configured
-- HTTPS enforced
-- Security headers middleware
-- Input validation on all DTOs
-- EF Core uses parameterized queries (no SQL injection risk)
-- XSS protection enabled
-
-That said, if you're deploying this to production, you should probably get a security review. I'm not a security expert.
-
-## Database Structure
-
-The database uses ASP.NET Identity tables for user management. On top of that:
-
-Main tables:
-- **Users** - from ASP.NET Identity
-- **Books** - book catalog
-- **Authors** - author information
-- **Categories** - book categories
-- **Orders** - customer orders
-- **OrderItems** - individual items in orders
-
-Junction tables for many-to-many:
-- **BookAuthors** - links books to authors
-- **BookCategories** - links books to categories
-
-Pretty straightforward normalized schema. EF Core handles the joins.
-
-## Contributing
-
-If you want to contribute, go ahead and open a PR. I'm happy to review any improvements, bug fixes, or new features. Just make sure the code follows the existing patterns and includes tests if you're adding new functionality.
-
-Also, if you find bugs, please open an issue with steps to reproduce.
-
-## License
-
-MIT License - do whatever you want with it. See the LICENSE file for the legal stuff.
-
-## Contact
-
-Kareem Sabry
-
-- GitHub: [@kareem-sabry](https://github.com/kareem-sabry)
-- LinkedIn: [k-sabry](https://www.linkedin.com/in/k-sabry/)
-- Email: kareemsabry.mail@gmail.com
-
-Feel free to reach out if you have questions or just want to chat about the project.
-
-## Acknowledgments
-
-Built with help from:
-- ASP.NET Core documentation
-- Stripe API docs
-- Clean Architecture patterns from Robert C. Martin
-- Various Stack Overflow answers when I got stuck
+Author and category IDs must already exist, otherwise you'll get a validation error.
+</details>
 
 ---
 
-If this project was useful to you, consider giving it a star. Helps others find it too.
+## 🗄 Database Schema
+
+```
+Users (ASP.NET Identity)
+│
+├── Orders ──── OrderItems ──── Books
+│                                 │
+│                            BookAuthors ──── Authors
+│                            BookCategories ── Categories
+```
+
+Standard normalized schema — EF Core handles all joins.
+
+---
+
+## 🔐 Security
+
+- Passwords hashed with ASP.NET Core Identity (bcrypt-based, never stored plain)
+- Stateless JWT authentication with refresh token rotation
+- Role-based authorization on all sensitive endpoints
+- CORS and HTTPS enforced
+- Security headers middleware
+- EF Core parameterized queries (SQL injection safe)
+- XSS protection enabled
+- Input validation on all DTOs
+
+> For production deployments, a dedicated security review is recommended.
+
+---
+
+## 🛠 Tech Stack
+
+| | Technology |
+|---|---|
+| Framework | ASP.NET Core 8.0 / C# 12 |
+| Database | SQL Server + Entity Framework Core 8 |
+| Auth | JWT Bearer + ASP.NET Core Identity |
+| Payments | Stripe API |
+| Mapping | AutoMapper |
+| Docs | Swagger / OpenAPI |
+
+---
+
+## 🤝 Contributing
+
+PRs are welcome! Please follow the existing code patterns and include tests for new functionality. For bugs, open an issue with steps to reproduce.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) — do whatever you want with it.
+
+---
+
+## 📬 Contact
+
+**Kareem Sabry**
+
+[![GitHub](https://img.shields.io/badge/GitHub-kareem--sabry-181717?logo=github)](https://github.com/kareem-sabry)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-k--sabry-0A66C2?logo=linkedin)](https://www.linkedin.com/in/k-sabry/)
+[![Email](https://img.shields.io/badge/Email-kareemsabry.mail@gmail.com-EA4335?logo=gmail)](mailto:kareemsabry.mail@gmail.com)
+
+---
+
+<div align="center">
+  If this was useful, consider giving it a ⭐ — it helps others find it too.
+</div>
