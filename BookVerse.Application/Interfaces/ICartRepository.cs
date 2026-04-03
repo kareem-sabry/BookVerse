@@ -8,7 +8,7 @@ public interface ICartRepository : IGenericRepository<Cart>
     Task<Cart?> GetCartWithItemsAsync(int cartId, CancellationToken cancellationToken = default);
     Task<CartItem?> GetCartItemAsync(int cartId, int bookId, CancellationToken cancellationToken = default);
     Task AddCartItemAsync(CartItem cartItem, CancellationToken cancellationToken = default);
-    void UpdateCartItem(CartItem cartItem, CancellationToken cancellationToken = default);
-    void DeleteCartItem(CartItem cartItem, CancellationToken cancellationToken = default);
+    void UpdateCartItem(CartItem cartItem);
+    void DeleteCartItem(CartItem cartItem);
     Task ClearCartAsync(int cartId, CancellationToken cancellationToken = default);
 }

@@ -34,12 +34,12 @@ public class CartRepository : GenericRepository<Cart>, ICartRepository
         await _context.CartItems.AddAsync(cartItem, cancellationToken);
     }
 
-    public void UpdateCartItem(CartItem cartItem, CancellationToken cancellationToken)
+    public void UpdateCartItem(CartItem cartItem)
     {
         _context.CartItems.Update(cartItem);
     }
 
-    public void DeleteCartItem(CartItem cartItem, CancellationToken cancellationToken)
+    public void DeleteCartItem(CartItem cartItem)
     {
         _context.CartItems.Remove(cartItem);
     }

@@ -89,12 +89,12 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
         return await _context.BookCategories.AsNoTracking().Where(bc => bc.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
     }
 
-    public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors, CancellationToken cancellationToken)
+    public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors)
     {
         _context.BookAuthors.RemoveRange(bookAuthors);
     }
 
-    public void RemoveBookCategories(IEnumerable<BookCategory> bookCategories, CancellationToken cancellationToken)
+    public void RemoveBookCategories(IEnumerable<BookCategory> bookCategories)
     {
         _context.BookCategories.RemoveRange(bookCategories);
     }
