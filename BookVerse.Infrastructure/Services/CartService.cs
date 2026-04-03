@@ -4,6 +4,7 @@ using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace BookVerse.Infrastructure.Services;
@@ -58,7 +59,7 @@ public class CartService : ICartService
         {
             _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
             await _unitOfWork.RollbackTransactionAsync();
-            throw new KeyNotFoundException(ErrorMessages.BookNotFound);
+            throw new NotFoundException(ErrorMessages.BookNotFound);
         }
 
         if (book.QuantityInStock < cartItem.Quantity)
@@ -133,7 +134,7 @@ public class CartService : ICartService
         if (book == null)
         {
             _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
-            throw new KeyNotFoundException(ErrorMessages.BookNotFound);
+            throw new NotFoundException(ErrorMessages.BookNotFound);
         }
 
         if (book.QuantityInStock < cartItemUpdate.Quantity)

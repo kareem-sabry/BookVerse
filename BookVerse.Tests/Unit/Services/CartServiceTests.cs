@@ -3,6 +3,7 @@ using BookVerse.Application.Dtos.Cart;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Exceptions;
 using BookVerse.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -389,7 +390,7 @@ public class CartServiceTests
     }
 
     [Fact]
-    public async Task AddToCartAsync_WithNonExistentBook_ThrowsKeyNotFoundException()
+    public async Task AddToCartAsync_WithNonExistentBook_NotFoundException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -415,7 +416,7 @@ public class CartServiceTests
         var act = async () => await _sut.AddToCartAsync(userId, cartItemAdd, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
+        await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage(ErrorMessages.BookNotFound);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
