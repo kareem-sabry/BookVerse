@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookverse-api
+    ports:
+      - "5000:8080"
+    environment:
+environment:
+  - ASPNETCORE_ENVIRONMENT=Development
+  - ConnectionStrings__DefaultConnection=Server=db;Database=BookVerseDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=true;MultipleActiveResultSets=true
+  - JwtOptions__Secret=${JWT_SECRET}
+  - JwtOptions__Issuer=${JWT_ISSUER}
+  - JwtOptions__Audience=${JWT_AUDIENCE}
+  - JwtOptions__ExpirationTimeInMinutes=${JWT_EXPIRATION}
+  - AdminUser__Email=${ADMIN_EMAIL}
+  - AdminUser__Password=${ADMIN_PASSWORD}
+  - AdminUser__FirstName=${ADMIN_FIRSTNAME}
+  - AdminUser__LastName=${ADMIN_LASTNAME}
+  - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+  - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+  - EmailOptions__SmtpHost=${SMTP_HOST}
+  - EmailOptions__SmtpPort=${SMTP_PORT}
+  - EmailOptions__FromEmail=${FROM_EMAIL}
+  - EmailOptions__FromName=${FROM_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: bookverse-db
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=BookVerse_Dev123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P BookVerse_Dev123! -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  sqldata:
