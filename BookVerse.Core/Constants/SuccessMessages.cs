@@ -17,6 +17,15 @@ public static class SuccessMessages
     // Token messages
     public const string TokenRefreshed = "Token refreshed successfully.";
 
+    // Order messages
+    public const string OrderCancelled = "Order cancelled successfully";
+    public const string OrderStatusUpdated = "Order status updated successfully";
+    public const string PaymentStatusUpdated = "Payment status updated successfully";
+
+    // Cart messages
+    public const string CartItemRemoved = "Item removed from cart successfully";
+    public const string CartCleared = "Cart cleared successfully";
+
     // Role messages
     public const string AdminRoleGranted = "Admin role has been granted.";
     public const string AdminRoleRemoved = "Admin role has been removed.";
