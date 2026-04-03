@@ -2,7 +2,6 @@
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
-using BookVerse.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,18 +10,16 @@ namespace BookVerse.Infrastructure.Services;
 
 public class AdminService : IAdminService
 {
-    private readonly AppDbContext _context;
     private readonly ILogger<AdminService> _logger;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly UserManager<User> _userManager;
 
     public AdminService(UserManager<User> userManager, ILogger<AdminService> logger,
-        RoleManager<IdentityRole<Guid>> roleManager, AppDbContext context)
+        RoleManager<IdentityRole<Guid>> roleManager)
     {
         _userManager = userManager;
         _logger = logger;
         _roleManager = roleManager;
-        _context = context;
     }
 
     public async Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync(CancellationToken cancellationToken)
@@ -31,29 +28,23 @@ public class AdminService : IAdminService
 
         if (!users.Any()) return Enumerable.Empty<UserWithRolesDto>();
 
-        var userIds = users.Select(u => u.Id).ToList();
-
-        var userRoles = await _context.UserRoles.Where(ur => userIds.Contains(ur.UserId))
-            .Join(_context.Roles,
-                ur => ur.RoleId,
-                r => r.Id,
-                (ur, r) => new { ur.UserId, r.Name }
-            ).ToListAsync(cancellationToken);
-
-        var rolesByUser = userRoles
-            .GroupBy(ur => ur.UserId)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
-
-        var usersWithRoles = users.Select(user => new UserWithRolesDto
+        // UserManager.GetRolesAsync issues one query per user — acceptable here
+        // because admin listing is low-frequency with small user counts.
+        var result = new List<UserWithRolesDto>();
+        foreach (var user in users)
         {
-            Id = user.Id,
-            Email = user.Email ?? string.Empty,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Roles = rolesByUser.TryGetValue(user.Id, out var roles) ? roles! : new List<string>()
-        }).ToList();
+            var roles = await _userManager.GetRolesAsync(user);
+            result.Add(new UserWithRolesDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? string.Empty,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Roles = roles.ToList()
+            });
+        }
 
-        return usersWithRoles;
+        return result;
     }
 
     public async Task<UserWithRolesDto?> GetUserByIdAsync(Guid userId)

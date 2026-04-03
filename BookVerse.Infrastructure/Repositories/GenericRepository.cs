@@ -1,5 +1,4 @@
-﻿using System.Linq.Dynamic.Core;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Data;
