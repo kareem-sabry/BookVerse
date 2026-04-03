@@ -80,27 +80,8 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        try
-        {
-            var cart = await _cartService.AddToCartAsync(userId, cartItemAdd, cancellationToken);
-            return Ok(cart);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new BasicResponse
-            {
-                Succeeded = false,
-                Message = ex.Message
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = ex.Message
-            });
-        }
+        var cart = await _cartService.AddToCartAsync(userId, cartItemAdd, cancellationToken);
+        return Ok(cart);
     }
 
     [HttpPut("items/{cartItemId:int}")]
@@ -140,35 +121,16 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        try
-        {
-            var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, cancellationToken);
+        var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, cancellationToken);
 
-            if (cart == null)
-                return NotFound(new BasicResponse
-                {
-                    Succeeded = false,
-                    Message = "Cart item not found"
-                });
-
-            return Ok(cart);
-        }
-        catch (KeyNotFoundException ex)
-        {
+        if (cart == null)
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
-                Message = ex.Message
+                Message = "Cart item not found"
             });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = ex.Message
-            });
-        }
+
+        return Ok(cart);
     }
 
     [HttpDelete("items/{cartItemId:int}")]
