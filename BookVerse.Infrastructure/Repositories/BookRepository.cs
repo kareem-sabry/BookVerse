@@ -66,7 +66,10 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
             .Include(b => b.BookCategories)
             .ThenInclude(bc => bc.Category)
-            .FirstOrDefaultAsync(b => b.Title == book.Title, cancellationToken: cancellationToken);
+            .FirstOrDefaultAsync(b =>
+                    b.Title == book.Title &&
+                    (book.ISBN == null || b.ISBN == book.ISBN),
+                cancellationToken: cancellationToken);
     }
 
     public async Task AddBookAuthorAsync(BookAuthor bookAuthor, CancellationToken cancellationToken)

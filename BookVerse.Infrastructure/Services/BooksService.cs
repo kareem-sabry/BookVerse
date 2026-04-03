@@ -2,6 +2,7 @@
 using BookVerse.Application.Dtos.Book;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -59,9 +60,9 @@ public class BooksService : IBooksService
 
         if (existingBook != null)
         {
-            _logger.LogInformation("Book already exists: {BookTitle}", book.Title);
-            await _unitOfWork.CommitTransactionAsync();
-            return _mapper.Map<BookReadDto>(existingBook);
+            _logger.LogWarning("Duplicate book creation attempted: {BookTitle}", book.Title);
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ConflictException($"A book with the title '{book.Title}' already exists.");
         }
 
         await _unitOfWork.Books.AddAsync(book, cancellationToken);
