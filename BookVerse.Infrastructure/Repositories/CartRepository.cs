@@ -7,11 +7,8 @@ namespace BookVerse.Infrastructure.Repositories;
 
 public class CartRepository : GenericRepository<Cart>, ICartRepository
 {
-    private readonly AppDbContext _context;
-
     public CartRepository(AppDbContext context) : base(context)
     {
-        _context = context;
     }
 
     public async Task<Cart?> GetUserCartAsync(Guid userId, CancellationToken cancellationToken)
