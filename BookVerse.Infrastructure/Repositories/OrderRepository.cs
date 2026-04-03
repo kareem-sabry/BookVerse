@@ -15,6 +15,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
     public async Task<Order?> GetOrderWithDetailsAsync(int orderId, CancellationToken cancellationToken)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.Book)
             .Include(o => o.User)
@@ -79,6 +80,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
     public async Task<Order?> GetUserOrderByIdAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
         return await _dbSet
+            .AsNoTracking()
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.Book)
             .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId, cancellationToken: cancellationToken);
