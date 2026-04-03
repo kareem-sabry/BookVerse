@@ -143,12 +143,6 @@ public class AccountServiceTests
             Role = Role.Admin
         };
 
-        var user = new User
-        {
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            Email = request.Email
-        };
         _mockUserManager.Setup(x => x.FindByEmailAsync(request.Email)).ReturnsAsync((User?)null);
 
         // Act

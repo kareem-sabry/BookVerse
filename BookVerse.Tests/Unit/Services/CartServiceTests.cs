@@ -143,13 +143,6 @@ public class CartServiceTests
             QuantityInStock = 10
         };
 
-        var newCart = new Cart
-        {
-            Id = 1,
-            UserId = userId,
-            CartItems = new List<CartItem>()
-        };
-
         var updatedCart = new Cart
         {
             Id = 1,
@@ -424,7 +417,7 @@ public class CartServiceTests
     }
 
     [Fact]
-    public async Task AddToCartAsync_WithInsufficientStock_ThrowsInvalidOperationException()
+    public async Task AddToCartAsync_WithInsufficientStock_ThrowsValidationException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -458,7 +451,7 @@ public class CartServiceTests
         var act = async () => await _sut.AddToCartAsync(userId, cartItemAdd, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        await act.Should().ThrowAsync<ValidationException>()
             .WithMessage(ErrorMessages.InsufficientStock);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
@@ -611,7 +604,7 @@ public class CartServiceTests
     }
 
     [Fact]
-    public async Task UpdateCartItemAsync_WithInsufficientStock_ThrowsInvalidOperationException()
+    public async Task UpdateCartItemAsync_WithInsufficientStock_ThrowsValidationException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -653,7 +646,7 @@ public class CartServiceTests
         var act = async () => await _sut.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        await act.Should().ThrowAsync<ValidationException>()
             .WithMessage(ErrorMessages.InsufficientStock);
 
         _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);

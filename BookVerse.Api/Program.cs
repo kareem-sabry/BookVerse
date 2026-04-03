@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -34,8 +35,8 @@ builder.Configuration.AddUserSecrets<Program>();
 
 builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
     {
-        var dateTimeProvider = serviceProvider.GetRequiredService<IDateTimeProvider>();
-        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+        serviceProvider.GetRequiredService<IDateTimeProvider>();
+        serviceProvider.GetRequiredService<IHttpContextAccessor>();
 
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
             sqlOptions => sqlOptions.MigrationsAssembly("BookVerse.Infrastructure"));
@@ -155,7 +156,7 @@ builder.Services.AddAuthentication(opt =>
     var jwtOptions = builder.Configuration.GetSection(JwtOptions.JwtOptionsKey).Get<JwtOptions>();
 
     if (jwtOptions == null)
-        throw new InvalidOperationException(
+        throw new ValidationException(
             $"JWT configuration is missing. Please configure '{JwtOptions.JwtOptionsKey}' section.");
 
     if (string.IsNullOrEmpty(jwtOptions.Secret) || jwtOptions.Secret.Length < 32)
