@@ -26,6 +26,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
         CancellationToken cancellationToken)
     {
         var query = _dbSet
+            .AsNoTracking()
             .Include(o => o.OrderItems)
             .Where(o => o.UserId == userId);
 
@@ -51,6 +52,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
         CancellationToken cancellationToken)
     {
         IQueryable<Order> query = _dbSet
+            .AsNoTracking()
             .Include(o => o.OrderItems)
             .Include(o => o.User);
 

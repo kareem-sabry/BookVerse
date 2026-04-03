@@ -81,12 +81,12 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
 
     public async Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookAuthors.Where(ba => ba.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
+        return await _context.BookAuthors.AsNoTracking().Where(ba => ba.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<List<BookCategory>> GetBookCategoriesAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookCategories.Where(bc => bc.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
+        return await _context.BookCategories.AsNoTracking().Where(bc => bc.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
     }
 
     public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors, CancellationToken cancellationToken)
