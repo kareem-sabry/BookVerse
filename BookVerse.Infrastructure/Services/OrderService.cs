@@ -7,7 +7,7 @@ using BookVerse.Core.Entities;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
-
+using BookVerse.Core.Exceptions;
 namespace BookVerse.Infrastructure.Services;
 
 public class OrderService : IOrderService
@@ -40,7 +40,7 @@ public class OrderService : IOrderService
         {
             _logger.LogWarning("Attempted to create order with empty cart for user: {UserId}", userId);
             await _unitOfWork.RollbackTransactionAsync();
-            throw new InvalidOperationException(ErrorMessages.EmptyCart);
+            throw new ValidationException(ErrorMessages.EmptyCart);
         }
 
 // Single bulk fetch of all books needed for this order.
@@ -56,7 +56,7 @@ public class OrderService : IOrderService
             {
                 _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
                 await _unitOfWork.RollbackTransactionAsync();
-                throw new KeyNotFoundException($"Book with ID {cartItem.BookId} not found");
+                throw new NotFoundException($"Book with ID {cartItem.BookId} not found");
             }
 
             if (book.QuantityInStock < cartItem.Quantity)
@@ -65,7 +65,7 @@ public class OrderService : IOrderService
                     "Insufficient stock for book: {BookId}. Requested: {Requested}, Available: {Available}",
                     cartItem.BookId, cartItem.Quantity, book.QuantityInStock);
                 await _unitOfWork.RollbackTransactionAsync();
-                throw new InvalidOperationException($"Insufficient stock for book: {book.Title}");
+                throw new ValidationException($"Insufficient stock for book: {book.Title}");
             }
         }
 

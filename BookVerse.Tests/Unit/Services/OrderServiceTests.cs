@@ -5,6 +5,7 @@ using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
 using BookVerse.Core.Enums;
+using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Services;
 using FluentAssertions;
@@ -322,7 +323,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrderFromCartAsync_WithNonExistentBook_ThrowsKeyNotFoundException()
+    public async Task CreateOrderFromCartAsync_WithNonExistentBook_NotFoundException()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -363,7 +364,7 @@ public class OrderServiceTests
             await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, It.IsAny<CancellationToken>());
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
+        await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage("Book with ID 999 not found");
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
