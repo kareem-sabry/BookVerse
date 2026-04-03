@@ -150,7 +150,7 @@ public class AccountServiceTests
         // Assert
         registerResult.Succeeded.Should().BeFalse();
         registerResult.Message.Should().Be(ErrorMessages.InvalidRole);
-        registerResult.Errors.Contains(ErrorMessages.CannotRegisterAsAdmin);
+        registerResult.Errors.Should().Contain(ErrorMessages.CannotRegisterAsAdmin);
 
         _mockUserManager.Verify(x => x.CreateAsync(It.IsAny<User>(), It.IsAny<string>()), Times.Never);
     }
@@ -361,7 +361,9 @@ public class AccountServiceTests
 
         var newRefreshToken = "new-refresh-token";
 
-        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>())).ReturnsAsync(existingUser);
+        _mockUserRepository
+            .Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
 
@@ -406,7 +408,9 @@ public class AccountServiceTests
         };
 
 
-        _mockUserRepository.Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>())).ReturnsAsync(existingUser);
+        _mockUserRepository
+            .Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
 
