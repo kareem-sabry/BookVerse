@@ -635,7 +635,7 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, default);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().NotBeNull();
@@ -675,7 +675,7 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, default, isAdmin: true);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>(), isAdmin: true);
 
         // Assert
         result.Should().NotBeNull();
@@ -699,7 +699,7 @@ public class OrderServiceTests
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, default);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
 
         // Assert
         result.Should().BeNull();
@@ -787,12 +787,13 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>() // empty list is fine
         };
 
-        _mockUnitOfWork.Setup(x => x.Orders.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
+        _mockOrderRepository
+            .Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        // Mock Books.FindAsync to return empty list (prevent null)
-        _mockUnitOfWork.Setup(x => x.Books.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(),
-                It.IsAny<CancellationToken>()))
+        // Order has no items so FindAsync returns empty list
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Book>());
 
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
@@ -974,7 +975,7 @@ public class OrderServiceTests
         order.Notes.Should().Be("Order shipped via FedEx");
 
         _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -999,7 +1000,7 @@ public class OrderServiceTests
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -1067,7 +1068,7 @@ public class OrderServiceTests
         order.PaymentStatus.Should().Be(PaymentStatus.Completed);
 
         _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1092,7 +1093,7 @@ public class OrderServiceTests
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
