@@ -258,7 +258,11 @@ public class AccountService : IAccountService
             };
         }
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var rawToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        // URL-encode the token: raw Identity tokens contain +, /, = which break URLs.
+        // In production, a full reset URL should be sent instead of a raw token:
+        // https://bookverseapi.com/reset-password?token={encodedToken}&email={user.Email}
+        var token = Uri.EscapeDataString(rawToken);
 
         var emailBody = $"""
                          Hello {user.FirstName},
