@@ -78,7 +78,7 @@ public class CategoryService : ICategoryService
         }
 
         _mapper.Map(categoryDto, category);
-        _unitOfWork.Categories.Update(category, cancellationToken);
+        _unitOfWork.Categories.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated category: {CategoryId}", id);
@@ -94,7 +94,7 @@ public class CategoryService : ICategoryService
             return false;
         }
 
-        _unitOfWork.Categories.Delete(category, cancellationToken);
+        _unitOfWork.Categories.Delete(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Deleted category: {CategoryId}", id);

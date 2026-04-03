@@ -80,7 +80,7 @@ public class AuthorsService : IAuthorsService
         }
 
         _mapper.Map(authorDto, retrievedAuthor);
-        _unitOfWork.Authors.Update(retrievedAuthor, cancellationToken);
+        _unitOfWork.Authors.Update(retrievedAuthor);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated author: {AuthorId}", id);
@@ -96,7 +96,7 @@ public class AuthorsService : IAuthorsService
             return false;
         }
 
-        _unitOfWork.Authors.Delete(retrievedAuthor, cancellationToken);
+        _unitOfWork.Authors.Delete(retrievedAuthor);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Deleted author: {AuthorId}", id);

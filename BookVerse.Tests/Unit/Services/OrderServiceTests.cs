@@ -251,8 +251,8 @@ public class OrderServiceTests
         _mockOrderRepository.Verify(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Once);
         _mockOrderItemRepository.Verify(x => x.AddAsync(It.IsAny<OrderItem>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
-        _mockBookRepository.Verify(x => x.Update(book1, It.IsAny<CancellationToken>()), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book2, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book1), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book2), Times.Once);
         _mockCartRepository.Verify(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -496,7 +496,7 @@ public class OrderServiceTests
 
         // Assert
         book.QuantityInStock.Should().Be(7);
-        _mockBookRepository.Verify(x => x.Update(book, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book), Times.Once);
     }
 
     #endregion
@@ -768,8 +768,8 @@ public class OrderServiceTests
         order.Status.Should().Be(OrderStatus.Cancelled);
         book.QuantityInStock.Should().Be(8);
 
-        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
 
@@ -840,7 +840,7 @@ public class OrderServiceTests
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
     }
 
     [Fact]
@@ -892,7 +892,7 @@ public class OrderServiceTests
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
     }
 
     [Fact]
@@ -935,8 +935,8 @@ public class OrderServiceTests
         book1.QuantityInStock.Should().Be(7);
         book2.QuantityInStock.Should().Be(13);
 
-        _mockBookRepository.Verify(x => x.Update(book1, It.IsAny<CancellationToken>()), Times.Once);
-        _mockBookRepository.Verify(x => x.Update(book2, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book1), Times.Once);
+        _mockBookRepository.Verify(x => x.Update(book2), Times.Once);
     }
 
     #endregion
@@ -975,7 +975,7 @@ public class OrderServiceTests
         order.Status.Should().Be(OrderStatus.Shipped);
         order.Notes.Should().Be("Order shipped via FedEx");
 
-        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1000,7 +1000,7 @@ public class OrderServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -1068,7 +1068,7 @@ public class OrderServiceTests
         result.Message.Should().Be("Payment status updated successfully");
         order.PaymentStatus.Should().Be(PaymentStatus.Completed);
 
-        _mockOrderRepository.Verify(x => x.Update(order, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1093,7 +1093,7 @@ public class OrderServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be(ErrorMessages.OrderNotFound);
 
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

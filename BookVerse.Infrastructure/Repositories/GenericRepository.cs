@@ -54,12 +54,12 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         await _dbSet.AddAsync(entity, cancellationToken);
     }
 
-    public virtual void Update(T entity, CancellationToken cancellationToken)
+    public virtual void Update(T entity)
     {
         _dbSet.Update(entity);
     }
 
-    public virtual void Delete(T entity, CancellationToken cancellationToken)
+    public virtual void Delete(T entity)
     {
         _dbSet.Remove(entity);
     }

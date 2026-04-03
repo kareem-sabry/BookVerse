@@ -70,21 +70,29 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1)
             }));
 
-    // Strict rate limit for auth endpoints
-    options.AddFixedWindowLimiter("auth", options =>
-    {
-        options.PermitLimit = 5;
-        options.Window = TimeSpan.FromMinutes(1);
-        options.QueueLimit = 0;
-    });
+    /// Strict per-IP rate limit for auth endpoints
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 
-    // Moderate rate limit for public endpoints
-    options.AddFixedWindowLimiter("api", options =>
-    {
-        options.PermitLimit = 50;
-        options.Window = TimeSpan.FromMinutes(1);
-        options.QueueLimit = 0;
-    });
+    // Moderate per-IP rate limit for public endpoints
+    options.AddPolicy("api", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 50,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 
     options.OnRejected = async (context, token) =>
     {

@@ -377,7 +377,7 @@ public class CartServiceTests
         result.Should().NotBeNull();
         result.CartItems[0].Quantity.Should().Be(5);
 
-        _mockCartRepository.Verify(x => x.UpdateCartItem(existingCartItem, It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.UpdateCartItem(existingCartItem), Times.Once);
         _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
@@ -546,7 +546,7 @@ public class CartServiceTests
         result.Should().NotBeNull();
         result!.CartItems[0].Quantity.Should().Be(5);
 
-        _mockCartRepository.Verify(x => x.UpdateCartItem(cartItem, It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.UpdateCartItem(cartItem), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
     }
 
@@ -569,7 +569,7 @@ public class CartServiceTests
         // Assert
         result.Should().BeNull();
 
-        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -599,7 +599,7 @@ public class CartServiceTests
         // Assert
         result.Should().BeNull();
 
-        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -649,7 +649,7 @@ public class CartServiceTests
         await act.Should().ThrowAsync<ValidationException>()
             .WithMessage(ErrorMessages.InsufficientStock);
 
-        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.UpdateCartItem(It.IsAny<CartItem>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -691,7 +691,7 @@ public class CartServiceTests
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Be("Item removed from cart successfully");
 
-        _mockCartRepository.Verify(x => x.DeleteCartItem(cartItem, It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.DeleteCartItem(cartItem), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Once);
     }
 
@@ -712,7 +712,7 @@ public class CartServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Cart not found");
 
-        _mockCartRepository.Verify(x => x.DeleteCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.DeleteCartItem(It.IsAny<CartItem>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 
@@ -740,7 +740,7 @@ public class CartServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Be("Cart item not found");
 
-        _mockCartRepository.Verify(x => x.DeleteCartItem(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.DeleteCartItem(It.IsAny<CartItem>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Never);
     }
 

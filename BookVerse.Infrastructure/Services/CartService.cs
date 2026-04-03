@@ -85,7 +85,7 @@ public class CartService : ICartService
 
             existingCartItem.Quantity = newQuantity;
             existingCartItem.PriceAtAdd = book.Price;
-            _unitOfWork.Carts.UpdateCartItem(existingCartItem, cancellationToken);
+            _unitOfWork.Carts.UpdateCartItem(existingCartItem);
             _logger.LogInformation("Updated cart item for book: {BookId}, new quantity: {Quantity}",
                 cartItem.BookId, newQuantity);
         }
@@ -146,7 +146,7 @@ public class CartService : ICartService
 
         cartItem.Quantity = cartItemUpdate.Quantity;
         cartItem.PriceAtAdd = book.Price;
-        _unitOfWork.Carts.UpdateCartItem(cartItem, cancellationToken);
+        _unitOfWork.Carts.UpdateCartItem(cartItem);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Updated cart item: {CartItemId} to quantity: {Quantity}", cartItemId,
             cartItemUpdate.Quantity);
@@ -182,7 +182,7 @@ public class CartService : ICartService
             };
         }
 
-        _unitOfWork.Carts.DeleteCartItem(cartItem, cancellationToken);
+        _unitOfWork.Carts.DeleteCartItem(cartItem);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Removed cart item: {CartItemId} from user cart: {UserId}", cartItemId, userId);

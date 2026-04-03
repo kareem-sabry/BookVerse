@@ -111,11 +111,11 @@ public class BooksService : IBooksService
 
         //Update basic properties
         _mapper.Map(bookDto, book);
-        _unitOfWork.Books.Update(book, cancellationToken);
+        _unitOfWork.Books.Update(book);
 
         //Remove existing author relationships
         var existingAuthorRelations = await _unitOfWork.Books.GetBookAuthorsAsync(id, cancellationToken);
-        _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations, cancellationToken);
+        _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations);
 
         //Add new author relationships
         foreach (var authorId in bookDto.AuthorIds)
@@ -131,7 +131,7 @@ public class BooksService : IBooksService
 
         //Remove existing category relationships
         var existingCategoryRelations = await _unitOfWork.Books.GetBookCategoriesAsync(id, cancellationToken);
-        _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations, cancellationToken);
+        _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations);
 
         //Add new category relationships
         foreach (var categoryId in bookDto.CategoryIds)
@@ -162,7 +162,7 @@ public class BooksService : IBooksService
             return false;
         }
 
-        _unitOfWork.Books.Delete(book, cancellationToken);
+        _unitOfWork.Books.Delete(book);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Deleted book: {BookId}", id);
         return true;

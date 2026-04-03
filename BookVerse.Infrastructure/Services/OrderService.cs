@@ -103,7 +103,7 @@ public class OrderService : IOrderService
             if (books.TryGetValue(cartItem.BookId, out var book))
             {
                 book.QuantityInStock -= cartItem.Quantity;
-                _unitOfWork.Books.Update(book, cancellationToken);
+                _unitOfWork.Books.Update(book);
             }
         }
 
@@ -196,7 +196,7 @@ public class OrderService : IOrderService
 
         // Update order status
         order.Status = OrderStatus.Cancelled;
-        _unitOfWork.Orders.Update(order, cancellationToken);
+        _unitOfWork.Orders.Update(order);
 
         // Restore book stock
         var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
@@ -209,7 +209,7 @@ public class OrderService : IOrderService
             if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
             {
                 book.QuantityInStock += orderItem.Quantity;
-                _unitOfWork.Books.Update(book, cancellationToken);
+                _unitOfWork.Books.Update(book);
             }
         }
 
@@ -242,7 +242,7 @@ public class OrderService : IOrderService
         order.Status = updateDto.Status;
         if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
 
-        _unitOfWork.Orders.Update(order, cancellationToken);
+        _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Order status updated: {OrderId} to {Status}", orderId, updateDto.Status);
@@ -269,7 +269,7 @@ public class OrderService : IOrderService
         }
 
         order.PaymentStatus = updateDto.PaymentStatus;
-        _unitOfWork.Orders.Update(order, cancellationToken);
+        _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Payment status updated: {OrderId} to {Status}", orderId, updateDto.PaymentStatus);

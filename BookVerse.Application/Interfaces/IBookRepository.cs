@@ -15,6 +15,6 @@ public interface IBookRepository : IGenericRepository<Book>
     Task AddBookCategoryAsync(BookCategory bookCategory, CancellationToken cancellationToken = default);
     Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId, CancellationToken cancellationToken = default);
     Task<List<BookCategory>> GetBookCategoriesAsync(int bookId, CancellationToken cancellationToken = default);
-    void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors, CancellationToken cancellationToken = default);
-    void RemoveBookCategories(IEnumerable<BookCategory> bookCategories, CancellationToken cancellationToken = default);
+    void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors);
+    void RemoveBookCategories(IEnumerable<BookCategory> bookCategories);
 }
