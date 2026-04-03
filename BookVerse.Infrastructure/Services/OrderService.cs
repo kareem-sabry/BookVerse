@@ -43,11 +43,16 @@ public class OrderService : IOrderService
             throw new InvalidOperationException(ErrorMessages.EmptyCart);
         }
 
-        // Validate stock availability for all items
+// Single bulk fetch of all books needed for this order.
+        // Used for both stock validation and stock deduction — eliminates N+1.
+        var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
+        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+            .ToDictionary(b => b.Id);
+
+        // Validate stock availability for all items before creating anything
         foreach (var cartItem in cart.CartItems)
         {
-            var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
-            if (book == null)
+            if (!books.TryGetValue(cartItem.BookId, out var book))
             {
                 _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
                 await _unitOfWork.RollbackTransactionAsync();
@@ -81,12 +86,7 @@ public class OrderService : IOrderService
         await _unitOfWork.Orders.AddAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-// Create order items and update book stock
-// Books were already fetched during stock validation; build a lookup to avoid N+1
-        var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
-        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
-            .ToDictionary(b => b.Id);
-
+        // Create order items and deduct stock using the same bulk-fetched dictionary
         foreach (var cartItem in cart.CartItems)
         {
             var orderItem = new OrderItem
@@ -99,7 +99,6 @@ public class OrderService : IOrderService
 
             await _unitOfWork.OrderItems.AddAsync(orderItem, cancellationToken);
 
-            // Reduce book stock
             if (books.TryGetValue(cartItem.BookId, out var book))
             {
                 book.QuantityInStock -= cartItem.Quantity;
@@ -200,7 +199,8 @@ public class OrderService : IOrderService
 
         // Restore book stock
         var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
-        var booksToRestore = (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
+        var booksToRestore =
+            (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
             .ToDictionary(b => b.Id);
 
         foreach (var orderItem in order.OrderItems)
