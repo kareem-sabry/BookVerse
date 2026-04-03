@@ -27,20 +27,16 @@ var builder = WebApplication.CreateBuilder(args);
 // ====================================
 // CONFIGURATION
 // ====================================
-builder.Configuration.AddUserSecrets<Program>();
-
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddUserSecrets<Program>();
 // ====================================
 // DATABASE
 // ====================================
 
-builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
-    {
-        serviceProvider.GetRequiredService<IDateTimeProvider>();
-        serviceProvider.GetRequiredService<IHttpContextAccessor>();
-
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-            sqlOptions => sqlOptions.MigrationsAssembly("BookVerse.Infrastructure"));
-    }
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.MigrationsAssembly("BookVerse.Infrastructure"))
 );
 
 // ====================================
@@ -379,7 +375,7 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = string.Empty;
     });
     app.UseCors("DevelopmentPolicy");
-    app.UseDeveloperExceptionPage();
+    // GlobalExceptionHandler covers both environments; no UseDeveloperExceptionPage needed
 }
 else
 {
@@ -420,7 +416,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         var result = new
         {
             status = report.Status.ToString(),
-            checkedAt = DateTime.UtcNow,
+            checkedAt = DateTimeOffset.UtcNow,
             duration = report.TotalDuration,
             checks = report.Entries.Select(e => new
             {
