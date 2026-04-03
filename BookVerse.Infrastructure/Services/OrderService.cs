@@ -8,6 +8,7 @@ using BookVerse.Core.Enums;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 using BookVerse.Core.Exceptions;
+
 namespace BookVerse.Infrastructure.Services;
 
 public class OrderService : IOrderService
@@ -177,7 +178,7 @@ public class OrderService : IOrderService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Order not found"
+                Message = ErrorMessages.OrderNotFound
             };
         }
 
@@ -189,7 +190,7 @@ public class OrderService : IOrderService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = $"Cannot cancel order with status: {order.Status}"
+                Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
             };
         }
 
@@ -220,7 +221,7 @@ public class OrderService : IOrderService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = "Order cancelled successfully"
+            Message = SuccessMessages.OrderCancelled
         };
     }
 
@@ -234,7 +235,7 @@ public class OrderService : IOrderService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Order not found"
+                Message = ErrorMessages.OrderNotFound
             };
         }
 
@@ -249,7 +250,7 @@ public class OrderService : IOrderService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = "Order status updated successfully"
+            Message = SuccessMessages.OrderStatusUpdated
         };
     }
 
@@ -263,7 +264,7 @@ public class OrderService : IOrderService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Order not found"
+                Message = ErrorMessages.OrderNotFound
             };
         }
 
@@ -276,7 +277,7 @@ public class OrderService : IOrderService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = "Payment status updated successfully"
+            Message = SuccessMessages.PaymentStatusUpdated
         };
     }
 

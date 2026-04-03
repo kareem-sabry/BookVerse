@@ -167,7 +167,7 @@ public class CartService : ICartService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Cart not found"
+                Message = ErrorMessages.CartNotFound
             };
         }
 
@@ -178,7 +178,7 @@ public class CartService : ICartService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Cart item not found"
+                Message = ErrorMessages.CartItemNotFound
             };
         }
 
@@ -190,7 +190,7 @@ public class CartService : ICartService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = "Item removed from cart successfully"
+            Message = SuccessMessages.CartItemRemoved
         };
     }
 
@@ -204,7 +204,7 @@ public class CartService : ICartService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = "Cart not found"
+                Message = ErrorMessages.CartNotFound
             };
         }
 
@@ -214,7 +214,7 @@ public class CartService : ICartService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = "Cart cleared successfully"
+            Message = SuccessMessages.CartCleared
         };
     }
 }

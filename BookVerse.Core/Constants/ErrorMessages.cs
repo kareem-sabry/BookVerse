@@ -39,5 +39,8 @@ public static class ErrorMessages
     public const string EmptyCart = "Cannot create order from an empty cart.";
     public const string InsufficientStock = "Insufficient stock available for one or more items.";
     public const string CannotCancelOrder = "This order cannot be cancelled.";
+    public const string CannotCancelOrderWithStatus = "Cannot cancel order with status: ";
     public const string InvalidOrderStatus = "Invalid order status.";
+    public const string CartNotFound = "Cart not found.";
+    public const string CartItemNotFound = "Cart item not found.";
 }
