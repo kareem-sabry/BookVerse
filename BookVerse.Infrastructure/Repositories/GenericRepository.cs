@@ -32,11 +32,13 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     public virtual async Task<Core.Models.PagedResult<T>> GetPagedAsync(QueryParameters parameters,
         CancellationToken cancellationToken)
     {
-        var query = _dbSet.AsNoTracking();
-
-
+        IQueryable<T> query = _dbSet.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+            query = ApplySearch(query, parameters.SearchTerm);
         var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
+        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
+            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
 
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
@@ -78,5 +80,16 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         return predicate == null
             ? await _dbSet.CountAsync(cancellationToken: cancellationToken)
             : await _dbSet.CountAsync(predicate, cancellationToken: cancellationToken);
+    }
+
+    protected virtual IQueryable<T> ApplySearch(IQueryable<T> query, string searchTerm)
+    {
+        return query;
+    }
+
+    protected virtual IQueryable<T> ApplySorting(IQueryable<T> query, string sortBy, bool descending)
+    {
+        var orderBy = descending ? $"{sortBy} descending" : sortBy;
+        return query.OrderBy<T, object>(orderBy);
     }
 }
