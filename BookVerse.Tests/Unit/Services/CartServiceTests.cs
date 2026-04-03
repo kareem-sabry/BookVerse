@@ -40,8 +40,7 @@ public class CartServiceTests
         _sut = new CartService(
             _mockUnitOfWork.Object,
             _mockMapper.Object,
-            _mockLogger.Object,
-            _mockDateTimeProvider.Object);
+            _mockLogger.Object);
     }
 
     #region GetCartByUserIdAsync Tests
