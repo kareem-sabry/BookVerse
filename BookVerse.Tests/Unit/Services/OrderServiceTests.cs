@@ -634,17 +634,15 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, default);
 
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(orderId);
         result.OrderNumber.Should().Be("ORD-20250104-123456");
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
-            Times.Once);
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -674,17 +672,14 @@ public class OrderServiceTests
         _mockMapper.Setup(x => x.Map<OrderReadDto>(order)).Returns(orderDto);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>(), true);
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, default, isAdmin: true);
 
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(orderId);
 
-        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()),
-            Times.Once);
-        _mockOrderRepository.Verify(
-            x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        _mockOrderRepository.Verify(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -698,13 +693,12 @@ public class OrderServiceTests
             .ReturnsAsync((Order?)null);
 
         // Act
-        var result = await _sut.GetOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>());
+        var result = await _sut.GetOrderByIdAsync(userId, orderId, default);
 
         // Assert
         result.Should().BeNull();
 
-        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()),
-            Times.Once);
+        _mockOrderRepository.Verify(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()), Times.Once);
         _mockMapper.Verify(x => x.Map<OrderReadDto>(It.IsAny<Order>()), Times.Never);
     }
 
