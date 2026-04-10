@@ -34,7 +34,8 @@ public class AccountService : IAccountService
         _dateTimeProvider = dateTimeProvider;
     }
 
-    public async Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest, CancellationToken cancellationToken = default)
+    public async Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest,
+        CancellationToken cancellationToken = default)
     {
         var userExists = await _userManager.FindByEmailAsync(registerRequest.Email) != null;
 
@@ -109,7 +110,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<LoginResponse> LoginAsync(LoginRequest loginRequest, CancellationToken cancellationToken = default)
+    public async Task<LoginResponse> LoginAsync(LoginRequest loginRequest,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(loginRequest.Email);
         if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequest.Password))
@@ -148,7 +150,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<BasicResponse> DeleteMyAccountAsync(string userEmail, CancellationToken cancellationToken = default)
+    public async Task<BasicResponse> DeleteMyAccountAsync(string userEmail,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(userEmail);
 
@@ -243,7 +246,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<BasicResponse> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<BasicResponse> ForgotPasswordAsync(ForgotPasswordRequest request,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -297,7 +301,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<BasicResponse> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    public async Task<BasicResponse> ResetPasswordAsync(ResetPasswordRequest request,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -312,7 +317,9 @@ public class AccountService : IAccountService
             };
         }
 
-        var result = await _userManager.ResetPasswordAsync(user, request.ResetCode, request.NewPassword);
+        var decodedToken = Uri.UnescapeDataString(request.ResetCode);
+        var result = await _userManager.ResetPasswordAsync(user, decodedToken,
+            request.NewPassword);
 
         if (!result.Succeeded)
         {
@@ -367,7 +374,8 @@ public class AccountService : IAccountService
         };
     }
 
-    public async Task<UserProfileDto?> GetCurrentUserAsync(string userEmail, CancellationToken cancellationToken = default)
+    public async Task<UserProfileDto?> GetCurrentUserAsync(string userEmail,
+        CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByEmailAsync(userEmail);
         if (user == null)

@@ -23,6 +23,8 @@ public class Order : IAuditable, IEntity
 
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
+    [MaxLength(100)] public string? StripePaymentIntentId { get; set; }
+
     [MaxLength(1000)] public string? Notes { get; set; }
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

@@ -19,6 +19,9 @@ services:
       - AdminUser__Password=${ADMIN_PASSWORD}
       - AdminUser__FirstName=${ADMIN_FIRSTNAME}
       - AdminUser__LastName=${ADMIN_LASTNAME}
+      - StripeOptions__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - StripeOptions__SecretKey=${STRIPE_SECRET_KEY}
+      - StripeOptions__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
       - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
       - Stripe__SecretKey=${STRIPE_SECRET_KEY}
       - EmailOptions__SmtpHost=${SMTP_HOST}

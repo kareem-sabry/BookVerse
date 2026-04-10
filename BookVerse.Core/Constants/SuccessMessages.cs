@@ -29,4 +29,8 @@ public static class SuccessMessages
     // Role messages
     public const string AdminRoleGranted = "Admin role has been granted.";
     public const string AdminRoleRemoved = "Admin role has been removed.";
+    
+    // Stripe / Payment messages
+    public const string PaymentIntentCreated = "Payment intent created successfully.";
+    public const string PaymentProcessedSuccessfully = "Payment processed successfully.";
 }

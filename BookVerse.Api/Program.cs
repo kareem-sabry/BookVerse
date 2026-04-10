@@ -16,11 +16,12 @@ using BookVerse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Stripe;
+using AccountService = BookVerse.Infrastructure.Services.AccountService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -278,6 +279,10 @@ builder.Services.Configure<AdminUserOptions>(
 builder.Services.Configure<EmailOptions>(
     builder.Configuration.GetSection("EmailOptions"));
 
+builder.Services.AddOptions<StripeOptions>()
+    .BindConfiguration(StripeOptions.StripeOptionsKey)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 // ====================================
 // DEPENDENCY INJECTION
 // ====================================
@@ -295,6 +300,7 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -334,6 +340,13 @@ builder.Services.AddCors(options =>
 // ====================================
 
 var app = builder.Build();
+
+// ====================================
+// STRIPE CONFIGURATION
+// ====================================
+
+var stripeOptions = app.Services.GetRequiredService<IOptions<StripeOptions>>().Value;
+StripeConfiguration.ApiKey = stripeOptions.SecretKey;
 
 // ====================================
 // DATABASE SEEDING

@@ -13,7 +13,7 @@ public class CartRepository : GenericRepository<Cart>, ICartRepository
 
     public async Task<Cart?> GetUserCartAsync(Guid userId, CancellationToken cancellationToken)
     {
-        return await _dbSet.Include(c => c.CartItems).ThenInclude(ci => ci.Book)
+        return await _dbSet.AsNoTracking().Include(c => c.CartItems).ThenInclude(ci => ci.Book)
             .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken: cancellationToken);
     }
 
@@ -25,7 +25,7 @@ public class CartRepository : GenericRepository<Cart>, ICartRepository
 
     public async Task<CartItem?> GetCartItemAsync(int cartId, int bookId, CancellationToken cancellationToken)
     {
-        return await _context.CartItems.FirstOrDefaultAsync(ci => ci.CartId == cartId && ci.BookId == bookId,
+        return await _context.CartItems.AsNoTracking().FirstOrDefaultAsync(ci => ci.CartId == cartId && ci.BookId == bookId,
             cancellationToken: cancellationToken);
     }
 
