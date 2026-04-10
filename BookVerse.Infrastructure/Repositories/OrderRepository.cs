@@ -92,4 +92,9 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
     {
         return await _dbSet.AnyAsync(o => o.Id == orderId && o.UserId == userId, cancellationToken: cancellationToken);
     }
+
+    public async Task<Order?> GetByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FirstOrDefaultAsync(o => o.StripePaymentIntentId == paymentIntentId, cancellationToken: cancellationToken);
+    }
 }
