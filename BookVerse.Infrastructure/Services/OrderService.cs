@@ -70,6 +70,9 @@ public class OrderService : IOrderService
             }
         }
 
+        var totalAmount =
+            cart.CartItems.Sum(ci => books.TryGetValue(ci.BookId, out var b) ? b.Price * ci.Quantity : 0m);
+
         // Create order
         var order = new Order
         {
@@ -81,7 +84,7 @@ public class OrderService : IOrderService
             PaymentMethod = orderCreateDto.PaymentMethod,
             PaymentStatus = PaymentStatus.Pending,
             Notes = orderCreateDto.Notes,
-            TotalAmount = cart.CartItems.Sum(ci => ci.PriceAtAdd * ci.Quantity)
+            TotalAmount = totalAmount
         };
 
         await _unitOfWork.Orders.AddAsync(order, cancellationToken);
