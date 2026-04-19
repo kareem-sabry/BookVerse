@@ -41,11 +41,12 @@ public class CartController : ControllerBase
             });
 
         var cart = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
+
         if (cart == null)
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
-                Message = "Cart is empty"
+                Message = ErrorMessages.CartNotFound
             });
 
         return Ok(cart);
@@ -127,7 +128,7 @@ public class CartController : ControllerBase
             return NotFound(new BasicResponse
             {
                 Succeeded = false,
-                Message = "Cart item not found"
+                Message = ErrorMessages.CartItemNotFound
             });
 
         return Ok(cart);
