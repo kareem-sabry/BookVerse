@@ -15,7 +15,6 @@ public class UnitOfWork : IUnitOfWork
     private ICartRepository? _cartRepository;
     private ICategoryRepository? _categoryRepository;
     private IGenericRepository<OrderItem>? _orderItemRepository;
-
     private IOrderRepository? _orderRepository;
     private IDbContextTransaction? _transaction;
     private IUserRepository? _userRepository;
@@ -52,7 +51,6 @@ public class UnitOfWork : IUnitOfWork
     {
         try
         {
-            await _context.SaveChangesAsync();
             if (_transaction != null) await _transaction.CommitAsync();
         }
         catch
