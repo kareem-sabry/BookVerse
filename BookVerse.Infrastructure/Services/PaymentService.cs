@@ -101,7 +101,19 @@ public class PaymentService : IPaymentService
                 _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
+            
+            // Idempotency guard: if this event was already processed, treat as a no-op.
+            // Stripe retries webhooks on non-2xx; without this guard, a retry would
+            // re-fulfill an already-paid order.
 
+            if (order.PaymentStatus == PaymentStatus.Completed)
+            {
+                _logger.LogInformation(
+                    "Duplicate webhook ignored for already-completed order {OrderNumber}",
+                    order.OrderNumber);
+                return;
+            }
+            
             order.PaymentStatus = PaymentStatus.Completed;
             order.Status = OrderStatus.Processing;
             _unitOfWork.Orders.Update(order);
@@ -124,7 +136,16 @@ public class PaymentService : IPaymentService
                 _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
-
+            
+            // Idempotency guard: already failed — nothing to do.
+            if (order.PaymentStatus == PaymentStatus.Failed)
+            {
+                _logger.LogInformation(
+                    "Duplicate webhook ignored for already-failed order {OrderNumber}",
+                    order.OrderNumber);
+                return;
+            }
+            
             order.PaymentStatus = PaymentStatus.Failed;
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
