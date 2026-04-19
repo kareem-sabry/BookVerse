@@ -47,18 +47,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-    options.JsonSerializerOptions.DefaultIgnoreCondition =
-        JsonIgnoreCondition.WhenWritingNull;
-}).AddNewtonsoftJson();
+builder.Services.AddControllers();
 builder.Services.AddRateLimiter(options =>
 {
     // Global rate limit
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             partition => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
@@ -301,7 +297,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+builder.Services.AddScoped<IDateTimeProvider, DateTimeProvider>();
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
@@ -311,7 +307,10 @@ builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessorService>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();
 //AutoMapper
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddAutoMapper(
+    cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"],
+    AppDomain.CurrentDomain.GetAssemblies()
+    );
 
 // ====================================
 // CORS CONFIGURATION
@@ -437,7 +436,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
                 status = e.Value.Status.ToString(),
                 description = e.Value.Description,
                 duration = e.Value.Duration,
-                error = e.Value.Exception?.Message
+                error = app.Environment.IsDevelopment() ? e.Value.Exception?.Message : null
             })
         };
 

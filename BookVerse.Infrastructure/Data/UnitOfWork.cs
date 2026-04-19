@@ -32,7 +32,7 @@ public class UnitOfWork : IUnitOfWork
     public IAuthorRepository Authors => _authorRepository ??= new AuthorRepository(_context);
 
     public ICategoryRepository Categories => _categoryRepository ??= new CategoryRepository(_context);
-    public ICartRepository Carts => _cartRepository ?? new CartRepository(_context);
+    public ICartRepository Carts => _cartRepository ??= new CartRepository(_context);
     public IOrderRepository Orders => _orderRepository ??= new OrderRepository(_context);
 
     public IGenericRepository<OrderItem> OrderItems =>

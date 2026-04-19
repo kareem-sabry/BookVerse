@@ -79,7 +79,7 @@ public class AuthController : ControllerBase
             var errorMessage = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage));
 
-            return BadRequest(new LoginResponse
+            return BadRequest(new RefreshTokenResponse
             {
                 Succeeded = false,
                 Message = errorMessage
@@ -184,7 +184,7 @@ public class AuthController : ControllerBase
         var response = await _accountService.ResetPasswordAsync(request);
         if (response.Succeeded) return Ok(response);
 
-        return BadRequest(response);
+        return Unauthorized(response);
     }
 
     [Authorize]

@@ -11,7 +11,7 @@ public class CategoryRepository : GenericRepository<Category>, ICategoryReposito
     {
     }
 
-    public async Task<Category?> GetByIdAsync(int id, CancellationToken cancellationToken)
+    public override async Task<Category?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _dbSet.AsNoTracking()
             .Include(c => c.BookCategories)

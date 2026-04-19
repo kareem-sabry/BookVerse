@@ -32,9 +32,13 @@ jobs:
         run: dotnet restore BookVerseApi.sln
 
       - name: Build
+        env:
+          AutoMapper__LicenseKey: ${{ secrets.AUTOMAPPER_LICENSE_KEY }}
         run: dotnet build BookVerseApi.sln --no-restore -c Release
 
       - name: Run tests
+        env:
+          AutoMapper__LicenseKey: ${{ secrets.AUTOMAPPER_LICENSE_KEY }}
         run: >
           dotnet test BookVerseApi.sln
           --no-build

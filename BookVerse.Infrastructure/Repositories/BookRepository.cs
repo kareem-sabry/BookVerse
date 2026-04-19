@@ -12,7 +12,7 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     {
     }
 
-    public override async Task<IEnumerable<Book>> GetAllAsync(CancellationToken cancellationToken)
+    public virtual async Task<IEnumerable<Book>> GetAllAsync(CancellationToken cancellationToken)
     {
         return await _dbSet.AsNoTracking()
             .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)

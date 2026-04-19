@@ -5,6 +5,7 @@ using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 
@@ -13,11 +14,13 @@ namespace BookVerse.Infrastructure.Services;
 public class PaymentService : IPaymentService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<PaymentService> _logger;
     private readonly StripeOptions _stripeOptions;
 
-    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions)
+    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions,ILogger<PaymentService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
         _stripeOptions = stripeOptions.Value;
     }
 
@@ -54,7 +57,7 @@ public class PaymentService : IPaymentService
 
         order.StripePaymentIntentId = paymentIntent.Id;
         _unitOfWork.Orders.Update(order);
-        _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new PaymentIntentResponseDto
         {
@@ -76,7 +79,7 @@ public class PaymentService : IPaymentService
         }
         catch (StripeException ex)
         {
-            Console.WriteLine($"[ERROR] StripeException: {ex.Message}");
+            _logger.LogWarning(ex, "Invalid Stripe webhook signature");
             throw new ValidationException(ErrorMessages.StripeWebhookSignatureInvalid);
         }
 
@@ -85,17 +88,17 @@ public class PaymentService : IPaymentService
             var paymentIntent = stripeEvent.Data.Object as Stripe.PaymentIntent;
             if (paymentIntent == null)
             {
-                Console.WriteLine("[WARN] PaymentIntent is null, skipping.");
+                _logger.LogWarning("PaymentIntentSucceeded event received but PaymentIntent object was null");
                 return;
             }
 
-            Console.WriteLine($"[INFO] PaymentIntent succeeded: {paymentIntent.Id}");
+            _logger.LogInformation("PaymentIntent succeeded: {PaymentIntentId}", paymentIntent.Id);
 
             var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(paymentIntent.Id,
                 cancellationToken);
             if (order == null)
             {
-                Console.WriteLine($"[WARN] Order not found for PaymentIntent: {paymentIntent.Id}");
+                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
 
@@ -104,21 +107,21 @@ public class PaymentService : IPaymentService
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            Console.WriteLine($"[INFO] Order {order.OrderNumber} updated to Completed/Processing.");
+            _logger.LogInformation("Order {OrderNumber} updated to Completed/Processing", order.OrderNumber);
         }
         else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
         {
             var paymentIntent = stripeEvent.Data.Object as Stripe.PaymentIntent;
             if (paymentIntent == null)
             {
-                Console.WriteLine("[WARN] PaymentIntent is null, skipping.");
+                _logger.LogWarning("PaymentIntentPaymentFailed event received but PaymentIntent object was null");
                 return;
             }
 
             var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(paymentIntent.Id, cancellationToken);
             if (order == null)
             {
-                Console.WriteLine($"[WARN] Order not found for PaymentIntent: {paymentIntent.Id}");
+                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
 
@@ -126,7 +129,7 @@ public class PaymentService : IPaymentService
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            Console.WriteLine($"[INFO] Order {order.OrderNumber} payment marked as Failed.");
+            _logger.LogInformation("Order {OrderNumber} payment marked as Failed", order.OrderNumber);
         }
     }
 }
