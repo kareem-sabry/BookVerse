@@ -422,11 +422,12 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
+        var dateTimeProvider = context.RequestServices.GetRequiredService<IDateTimeProvider>();
 
         var result = new
         {
             status = report.Status.ToString(),
-            checkedAt = DateTimeOffset.UtcNow,
+            checkedAt = dateTimeProvider.UtcNow,
             duration = report.TotalDuration,
             checks = report.Entries.Select(e => new
             {
