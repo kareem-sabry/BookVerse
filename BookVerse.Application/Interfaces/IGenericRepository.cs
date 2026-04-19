@@ -5,7 +5,6 @@ namespace BookVerse.Application.Interfaces;
 
 public interface IGenericRepository<T> where T : class
 {
-    Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<PagedResult<T>> GetPagedAsync(QueryParameters parameters, CancellationToken cancellationToken = default);
     Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);

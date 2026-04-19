@@ -11,11 +11,6 @@ public class AuthorRepository : GenericRepository<Author>, IAuthorRepository
     {
     }
 
-    public async Task<IEnumerable<Author>> GetAllAsync(CancellationToken cancellationToken)
-    {
-        return await _dbSet.ToListAsync(cancellationToken: cancellationToken);
-    }
-
     public async Task<Author?> GetByNameAsync(string firstName, string lastName, CancellationToken cancellationToken)
     {
         return await _dbSet.AsNoTracking()
@@ -24,7 +19,7 @@ public class AuthorRepository : GenericRepository<Author>, IAuthorRepository
             .FirstOrDefaultAsync(a => a.FirstName == firstName && a.LastName == lastName, cancellationToken: cancellationToken);
     }
 
-    public async Task<Author?> GetByIdAsync(int id, CancellationToken cancellationToken)
+    public override async Task<Author?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _dbSet
             .Include(a => a.BookAuthors)
