@@ -4,12 +4,12 @@ using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using ForgotPasswordRequest = BookVerse.Application.Dtos.User.ForgotPasswordRequest;
 using LoginRequest = BookVerse.Application.Dtos.User.LoginRequest;
 using RegisterRequest = BookVerse.Application.Dtos.User.RegisterRequest;
-using ResetPasswordRequest = Microsoft.AspNetCore.Identity.Data.ResetPasswordRequest;
+using ResetPasswordRequest =  BookVerse.Application.Dtos.User.ResetPasswordRequest;
 
 namespace BookVerse.Api.Controllers;
 

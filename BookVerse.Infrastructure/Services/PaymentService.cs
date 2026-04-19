@@ -4,7 +4,6 @@ using BookVerse.Core.Constants;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;

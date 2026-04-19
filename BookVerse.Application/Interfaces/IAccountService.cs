@@ -1,5 +1,4 @@
 ﻿using BookVerse.Application.Dtos.User;
-using Microsoft.AspNetCore.Identity.Data;
 using LoginRequest = BookVerse.Application.Dtos.User.LoginRequest;
 using RegisterRequest = BookVerse.Application.Dtos.User.RegisterRequest;
 

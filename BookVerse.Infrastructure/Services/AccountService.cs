@@ -1,11 +1,9 @@
-﻿using System.Diagnostics;
-using BookVerse.Application.Dtos.User;
+﻿using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
 using BookVerse.Core.Enums;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.Extensions.Logging;
 using LoginRequest = BookVerse.Application.Dtos.User.LoginRequest;
 using RegisterRequest = BookVerse.Application.Dtos.User.RegisterRequest;

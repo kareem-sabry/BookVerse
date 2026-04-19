@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using BookVerse.Api.Middlewares;
@@ -11,7 +10,6 @@ using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
 using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Data;
-using BookVerse.Infrastructure.Repositories;
 using BookVerse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -297,7 +295,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddScoped<IDateTimeProvider, DateTimeProvider>();
+builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 // Token Processing
 builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessorService>();

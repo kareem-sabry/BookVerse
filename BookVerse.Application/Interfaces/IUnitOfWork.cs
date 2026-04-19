@@ -9,6 +9,7 @@ public interface IUnitOfWork : IDisposable
     ICategoryRepository Categories { get; }
     ICartRepository Carts { get; }
     IOrderRepository Orders { get; }
+    IUserRepository Users { get; }
     IGenericRepository<OrderItem> OrderItems { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync();

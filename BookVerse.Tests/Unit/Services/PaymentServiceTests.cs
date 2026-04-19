@@ -1,6 +1,5 @@
 ﻿using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
-using BookVerse.Core.Entities;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
@@ -9,7 +8,6 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using Stripe;
 using Order = BookVerse.Core.Entities.Order;
 
 namespace BookVerse.Tests.Unit.Services;

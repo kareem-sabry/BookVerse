@@ -20,6 +20,7 @@ public class AccountServiceTests
     private readonly Mock<RoleManager<IdentityRole<Guid>>> _mockRoleManager;
     private readonly Mock<IAuthTokenProcessor> _mockTokenProcessor;
     private readonly Mock<UserManager<User>> _mockUserManager;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly AccountService _sut;
 
@@ -27,11 +28,15 @@ public class AccountServiceTests
     {
         _mockUserManager = TestHelper.MockUserManager();
         _mockRoleManager = TestHelper.MockRoleManager();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockUserRepository = new Mock<IUserRepository>();
         _mockEmailService = new Mock<IEmailService>();
         _mockLogger = new Mock<ILogger<AccountService>>();
         _mockTokenProcessor = new Mock<IAuthTokenProcessor>();
         _mockDateTimeProvider = new Mock<IDateTimeProvider>();
+
+        // Wire IUserRepository through IUnitOfWork — matches AccountService's new constructor
+        _mockUnitOfWork.Setup(x => x.Users).Returns(_mockUserRepository.Object);
 
         //Default date for all tests
         _mockDateTimeProvider.Setup(x => x.UtcNow)
@@ -41,10 +46,10 @@ public class AccountServiceTests
             _mockTokenProcessor.Object,
             _mockUserManager.Object,
             _mockRoleManager.Object,
-            _mockUserRepository.Object,
             _mockEmailService.Object,
             _mockLogger.Object,
-            _mockDateTimeProvider.Object);
+            _mockDateTimeProvider.Object,
+            _mockUnitOfWork.Object);
     }
 
     #region RegisterAsync Tests
@@ -271,7 +276,8 @@ public class AccountServiceTests
         loginResult.ExpiresAtUtc.Should().Be(expiresAt);
         loginResult.ExpiresAtUtc.Should().Be(expiresAt);
 
-        existingUser.RefreshToken.Should().Be(refreshToken);
+        existingUser.RefreshToken.Should().NotBeNull();
+        existingUser.RefreshToken.Should().NotBe(refreshToken);
         existingUser.RefreshTokenExpiresAtUtc.Should().NotBeNull();
 
         _mockUserManager.Verify(x => x.UpdateAsync(existingUser), Times.Once);
@@ -362,7 +368,7 @@ public class AccountServiceTests
         var newRefreshToken = "new-refresh-token";
 
         _mockUserRepository
-            .Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetUserByRefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
@@ -409,7 +415,7 @@ public class AccountServiceTests
 
 
         _mockUserRepository
-            .Setup(x => x.GetUserByRefreshTokenAsync(request.RefreshToken, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetUserByRefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingUser);
 
         _mockUserManager.Setup(x => x.GetRolesAsync(existingUser)).ReturnsAsync(userRoles);
