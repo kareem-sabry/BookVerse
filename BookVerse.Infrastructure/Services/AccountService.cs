@@ -16,23 +16,23 @@ public class AccountService : IAccountService
 {
     private readonly IAuthTokenProcessor _authTokenProcessor;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
     private readonly ILogger<AccountService> _logger;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly UserManager<User> _userManager;
-    private readonly IUserRepository _userRepository;
 
     public AccountService(IAuthTokenProcessor authTokenProcessor, UserManager<User> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager, IUserRepository userRepository, IEmailService emailService,
-        ILogger<AccountService> logger, IDateTimeProvider dateTimeProvider)
+        RoleManager<IdentityRole<Guid>> roleManager, IEmailService emailService,
+        ILogger<AccountService> logger, IDateTimeProvider dateTimeProvider, IUnitOfWork unitOfWork)
     {
         _authTokenProcessor = authTokenProcessor;
         _userManager = userManager;
         _roleManager = roleManager;
-        _userRepository = userRepository;
         _emailService = emailService;
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest,
@@ -201,7 +201,7 @@ public class AccountService : IAccountService
             };
 
         var hashedIncoming = HashToken(refreshTokenRequest.RefreshToken);
-        var user = await _userRepository.GetUserByRefreshTokenAsync(hashedIncoming, cancellationToken);
+        var user = await _unitOfWork.Users.GetUserByRefreshTokenAsync(hashedIncoming, cancellationToken);
 
         if (user == null)
         {
@@ -236,9 +236,9 @@ public class AccountService : IAccountService
         user.RefreshTokenExpiresAtUtc = refreshTokenExpirationDateInUtc;
 
         await _userManager.UpdateAsync(user);
-        
+
         _logger.LogInformation("Token refreshed for user: {Email}", user.Email);
-        
+
         return new RefreshTokenResponse
         {
             Succeeded = true,
