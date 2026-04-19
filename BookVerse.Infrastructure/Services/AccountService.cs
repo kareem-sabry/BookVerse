@@ -1,4 +1,5 @@
-﻿using BookVerse.Application.Dtos.User;
+﻿using System.Diagnostics;
+using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
@@ -134,7 +135,7 @@ public class AccountService : IAccountService
         var refreshTokenExpirationDateInUtc =
             _dateTimeProvider.UtcNow.AddDays(ApplicationConstants.RefreshTokenExpirationDays);
 
-        user.RefreshToken = refreshTokenValue;
+        user.RefreshToken = HashToken(refreshTokenValue);
         user.RefreshTokenExpiresAtUtc = refreshTokenExpirationDateInUtc;
 
         await _userManager.UpdateAsync(user);
@@ -199,8 +200,8 @@ public class AccountService : IAccountService
                 Message = ErrorMessages.RefreshTokenMissing
             };
 
-        var user = await _userRepository.GetUserByRefreshTokenAsync(refreshTokenRequest.RefreshToken,
-            cancellationToken);
+        var hashedIncoming = HashToken(refreshTokenRequest.RefreshToken);
+        var user = await _userRepository.GetUserByRefreshTokenAsync(hashedIncoming, cancellationToken);
 
         if (user == null)
         {
@@ -226,16 +227,18 @@ public class AccountService : IAccountService
 
         var roles = await _userManager.GetRolesAsync(user);
         var (jwtToken, expirationDateInUtc) = _authTokenProcessor.GenerateJwtToken(user, roles);
+
         var refreshTokenValue = _authTokenProcessor.GenerateRefreshToken();
-        var refreshExpirationDateInUtc =
+        var refreshTokenExpirationDateInUtc =
             _dateTimeProvider.UtcNow.AddDays(ApplicationConstants.RefreshTokenExpirationDays);
 
-        user.RefreshToken = refreshTokenValue;
-        user.RefreshTokenExpiresAtUtc = refreshExpirationDateInUtc;
+        user.RefreshToken = HashToken(refreshTokenValue);
+        user.RefreshTokenExpiresAtUtc = refreshTokenExpirationDateInUtc;
+
         await _userManager.UpdateAsync(user);
-
+        
         _logger.LogInformation("Token refreshed for user: {Email}", user.Email);
-
+        
         return new RefreshTokenResponse
         {
             Succeeded = true,
@@ -403,5 +406,12 @@ public class AccountService : IAccountService
             Role.Admin => IdentityRoleConstants.Admin,
             _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Provided role is not supported.")
         };
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
     }
 }
