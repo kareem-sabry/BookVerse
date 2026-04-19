@@ -8,6 +8,7 @@ using BookVerse.Core.Enums;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 using BookVerse.Core.Exceptions;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookVerse.Infrastructure.Services;
 
@@ -113,9 +114,19 @@ public class OrderService : IOrderService
         // Clear the cart
         await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _unitOfWork.CommitTransactionAsync();
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch(DbUpdateConcurrencyException)
+        {
+            _logger.LogWarning("Stock concurrency conflict for user {UserId} — order rolled back", userId);
 
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ValidationException(ErrorMessages.InsufficientStock);
+        }
+
+        await _unitOfWork.CommitTransactionAsync();
         _logger.LogInformation("Order created successfully: {OrderNumber} for user: {UserId}", order.OrderNumber,
             userId);
 
