@@ -293,8 +293,7 @@ public class AccountService : IAccountService
         await _emailService.SendEmailAsync(
             user.Email!,
             "BookVerse.Api Password Reset",
-            emailBody
-        );
+            emailBody, cancellationToken);
         _logger.LogInformation("Password reset email sent to: {Email}", user.Email);
 
         return new BasicResponse
