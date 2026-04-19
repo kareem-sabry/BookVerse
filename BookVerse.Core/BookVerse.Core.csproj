@@ -8,10 +8,7 @@
         <RootNamespace>BookVerse.Core</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0"/>
-        <!--        <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />-->
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0"/>
-
+        <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="8.0.0" />
     </ItemGroup>
 
 </Project>
