@@ -105,12 +105,14 @@ public class OrderService : IOrderService
         // Create order items and deduct stock using the same bulk-fetched dictionary
         foreach (var cartItem in cart.CartItems)
         {
+            var currentPrice = books[cartItem.BookId].Price;
+
             var orderItem = new OrderItem
             {
                 OrderId = order.Id,
                 BookId = cartItem.BookId,
                 Quantity = cartItem.Quantity,
-                PriceAtOrder = cartItem.PriceAtAdd
+                PriceAtOrder = currentPrice
             };
 
             await _unitOfWork.OrderItems.AddAsync(orderItem, cancellationToken);

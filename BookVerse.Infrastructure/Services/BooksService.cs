@@ -75,7 +75,6 @@ public class BooksService : IBooksService
             {
                 BookId = book.Id,
                 AuthorId = authorId,
-                CreatedAtUtc = _dateTimeProvider.UtcNow
             };
             await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor, cancellationToken);
         }
@@ -86,7 +85,6 @@ public class BooksService : IBooksService
             {
                 BookId = book.Id,
                 CategoryId = categoryId,
-                CreatedAtUtc = _dateTimeProvider.UtcNow
             };
             await _unitOfWork.Books.AddBookCategoryAsync(bookCategory, cancellationToken);
         }
@@ -125,7 +123,6 @@ public class BooksService : IBooksService
             {
                 BookId = id,
                 AuthorId = authorId,
-                CreatedAtUtc = _dateTimeProvider.UtcNow
             };
             await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor, cancellationToken);
         }
@@ -141,7 +138,6 @@ public class BooksService : IBooksService
             {
                 BookId = id,
                 CategoryId = categoryId,
-                CreatedAtUtc = _dateTimeProvider.UtcNow
             };
             await _unitOfWork.Books.AddBookCategoryAsync(bookCategory, cancellationToken);
         }
