@@ -86,6 +86,10 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> MakeUserAdmin(Guid userId, CancellationToken cancellationToken = default)
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
+        
+        if (string.IsNullOrWhiteSpace(currentAdminEmail))
+            return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
+        
         var response = await _adminService.MakeUserAdminAsync(userId, currentAdminEmail);
         if (!response.Succeeded)
             return BadRequest(response);
@@ -111,7 +115,11 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveAdminRole(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentAdminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (!Guid.TryParse(rawId, out var currentAdminId))
+            return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
+
         var response = await _adminService.RemoveAdminRoleAsync(userId, currentAdminId);
         if (!response.Succeeded)
             return BadRequest(response);
@@ -139,6 +147,10 @@ public class AdminController : ControllerBase
     public async Task<ActionResult> DeleteUser(Guid userId, CancellationToken cancellationToken = default)
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
+        
+        if (string.IsNullOrWhiteSpace(currentAdminEmail))
+            return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
+        
         var response = await _adminService.DeleteUserAsync(userId, currentAdminEmail);
         if (!response.Succeeded)
             return BadRequest(response);
