@@ -36,6 +36,8 @@ public static class ErrorMessages
 
     // Order Errors
     public const string OrderNotFound = "Order not found";
+    public const string CannotUpdateTerminalOrderStatus = "Invalid order status transition";
+
     public const string EmptyCart = "Cannot create order from an empty cart.";
     public const string InsufficientStock = "Insufficient stock available for one or more items.";
     public const string CannotCancelOrder = "This order cannot be cancelled.";
@@ -43,11 +45,13 @@ public static class ErrorMessages
     public const string InvalidOrderStatus = "Invalid order status.";
     public const string CartNotFound = "Cart not found.";
     public const string CartItemNotFound = "Cart item not found.";
-    
+
     // Stripe / Payment Errors
     public const string StripePaymentIntentCreationFailed = "Failed to create Stripe payment intent.";
     public const string StripeWebhookSignatureInvalid = "Invalid Stripe webhook signature.";
     public const string StripeWebhookEventParsingFailed = "Failed to parse Stripe webhook event.";
     public const string PaymentIntentAlreadyExists = "Payment intent already exists for this order.";
-    public const string OrderNotInPendingPaymentStatus = "Payment can only be initiated for orders with pending payment status.";
+
+    public const string OrderNotInPendingPaymentStatus =
+        "Payment can only be initiated for orders with pending payment status.";
 }

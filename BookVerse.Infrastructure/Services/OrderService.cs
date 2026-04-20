@@ -259,12 +259,14 @@ public class OrderService : IOrderService
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId}", orderId);
-            return new BasicResponse
-            {
-                Succeeded = false,
-                Message = ErrorMessages.OrderNotFound
-            };
+            return new BasicResponse { Succeeded = false, Message = ErrorMessages.OrderNotFound };
         }
+
+        // Enforce forward-only transitions. A Delivered or Cancelled order is terminal.
+        var terminalStatuses = new[] { OrderStatus.Delivered, OrderStatus.Cancelled };
+        if (terminalStatuses.Contains(order.Status))
+            throw new ConflictException(
+                $"{ErrorMessages.CannotUpdateTerminalOrderStatus}: {order.Status}");
 
         order.Status = updateDto.Status;
         if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
@@ -273,12 +275,7 @@ public class OrderService : IOrderService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Order status updated: {OrderId} to {Status}", orderId, updateDto.Status);
-
-        return new BasicResponse
-        {
-            Succeeded = true,
-            Message = SuccessMessages.OrderStatusUpdated
-        };
+        return new BasicResponse { Succeeded = true, Message = SuccessMessages.OrderStatusUpdated };
     }
 
     public async Task<BasicResponse> UpdatePaymentStatusAsync(int orderId, PaymentUpdateStatusDto updateDto,
