@@ -26,7 +26,8 @@ public class BookController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any,
+        VaryByQueryKeys = new[] { "*" })]
     [ProducesResponseType(typeof(PagedResult<BookReadDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBooks([FromQuery] BookQueryParameters parameters,
         CancellationToken cancellationToken = default)
