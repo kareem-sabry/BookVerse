@@ -99,7 +99,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(LogoutResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(LogoutResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(LogoutResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken = default)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
@@ -109,7 +109,7 @@ public class AuthController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _accountService.LogoutAsync(email);
+        var response = await _accountService.LogoutAsync(email, cancellationToken);
         if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
@@ -120,7 +120,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCurrentUser()
+    public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken = default)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
@@ -130,7 +130,7 @@ public class AuthController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var user = await _accountService.GetCurrentUserAsync(email);
+        var user = await _accountService.GetCurrentUserAsync(email, cancellationToken);
         if (user == null)
             return NotFound(new BasicResponse
             {
@@ -194,7 +194,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeleteMyAccount()
+    public async Task<IActionResult> DeleteMyAccount(CancellationToken cancellationToken = default)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(email))
@@ -204,7 +204,7 @@ public class AuthController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var result = await _accountService.DeleteMyAccountAsync(email);
+        var result = await _accountService.DeleteMyAccountAsync(email, cancellationToken);
         if (result.Succeeded) return Ok(result);
 
         return BadRequest(result);
