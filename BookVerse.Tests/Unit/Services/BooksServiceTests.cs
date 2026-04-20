@@ -35,8 +35,7 @@ public class BooksServiceTests
         _sut = new BooksService(
             _mockUnitOfWork.Object,
             _mockMapper.Object,
-            _mockLogger.Object,
-            _mockDateTimeProvider.Object);
+            _mockLogger.Object);
     }
 
     #region GetByIdAsync Tests
