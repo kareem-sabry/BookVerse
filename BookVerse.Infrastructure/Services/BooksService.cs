@@ -10,18 +10,15 @@ namespace BookVerse.Infrastructure.Services;
 
 public class BooksService : IBooksService
 {
-    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ILogger<BooksService> _logger;
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
 
-    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger,
-        IDateTimeProvider dateTimeProvider)
+    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
-        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters,
@@ -63,6 +60,30 @@ public class BooksService : IBooksService
             _logger.LogWarning("Duplicate book creation attempted: {BookTitle}", book.Title);
             await _unitOfWork.RollbackTransactionAsync();
             throw new ConflictException($"A book with the title '{book.Title}' already exists.");
+        }
+
+        // Validate that all supplied AuthorIds and CategoryIds actually exist
+        // before persisting anything, so we get a clear error rather than an FK violation 500.
+        var existingAuthors = (await _unitOfWork.Authors.FindAsync(
+                a => bookDto.AuthorIds.Contains(a.Id), cancellationToken))
+            .Select(a => a.Id)
+            .ToHashSet();
+        var missingAuthor = bookDto.AuthorIds.FirstOrDefault(id => !existingAuthors.Contains(id));
+        if (missingAuthor != default)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ValidationException($"Author with ID {missingAuthor} does not exist.");
+        }
+
+        var existingCategories = (await _unitOfWork.Categories.FindAsync(
+                c => bookDto.CategoryIds.Contains(c.Id), cancellationToken))
+            .Select(c => c.Id)
+            .ToHashSet();
+        var missingCategory = bookDto.CategoryIds.FirstOrDefault(id => !existingCategories.Contains(id));
+        if (missingCategory != default)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ValidationException($"Category with ID {missingCategory} does not exist.");
         }
 
         await _unitOfWork.Books.AddAsync(book, cancellationToken);
