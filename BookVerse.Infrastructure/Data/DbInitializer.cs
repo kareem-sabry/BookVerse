@@ -67,8 +67,7 @@ public static class DbInitializer
             return;
         }
 
-        var user = User.Create(admin.Email, admin.FirstName, admin.LastName,
-            dateTimeProvider.UtcNow);
+        var user = User.Create(admin.Email, admin.FirstName, admin.LastName);
 
         var createResult = await userManager.CreateAsync(user, admin.Password);
 
