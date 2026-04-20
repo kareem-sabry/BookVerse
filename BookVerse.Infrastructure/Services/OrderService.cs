@@ -89,7 +89,18 @@ public class OrderService : IOrderService
         };
 
         await _unitOfWork.Orders.AddAsync(order, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("OrderNumber") == true ||
+                                           ex.InnerException?.Message.Contains("UNIQUE") == true)
+        {
+            _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — retrying with new number",
+                order.OrderNumber);
+            order.OrderNumber = GenerateOrderNumber();
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
         // Create order items and deduct stock using the same bulk-fetched dictionary
         foreach (var cartItem in cart.CartItems)
@@ -118,7 +129,7 @@ public class OrderService : IOrderService
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch(DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException)
         {
             _logger.LogWarning("Stock concurrency conflict for user {UserId} — order rolled back", userId);
 
