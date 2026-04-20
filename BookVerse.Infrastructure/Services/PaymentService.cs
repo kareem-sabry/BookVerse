@@ -16,7 +16,7 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
     private readonly StripeOptions _stripeOptions;
 
-    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions,ILogger<PaymentService> logger)
+    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions, ILogger<PaymentService> logger)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -52,10 +52,24 @@ public class PaymentService : IPaymentService
         };
 
         var service = new PaymentIntentService();
-        var paymentIntent = await service.CreateAsync(options, cancellationToken: cancellationToken);
+
+        Stripe.PaymentIntent paymentIntent;
+        try
+        {
+            paymentIntent = await service.CreateAsync(options, cancellationToken: cancellationToken);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "Stripe API error creating PaymentIntent for order {OrderId}, user {UserId}",
+                orderId, userId);
+            throw new ValidationException($"Payment processing failed: {ex.StripeError?.Message ?? ex.Message}");
+        }
 
         order.StripePaymentIntentId = paymentIntent.Id;
+        
         _unitOfWork.Orders.Update(order);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new PaymentIntentResponseDto
@@ -100,7 +114,7 @@ public class PaymentService : IPaymentService
                 _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
-            
+
             // Idempotency guard: if this event was already processed, treat as a no-op.
             // Stripe retries webhooks on non-2xx; without this guard, a retry would
             // re-fulfill an already-paid order.
@@ -112,7 +126,7 @@ public class PaymentService : IPaymentService
                     order.OrderNumber);
                 return;
             }
-            
+
             order.PaymentStatus = PaymentStatus.Completed;
             order.Status = OrderStatus.Processing;
             _unitOfWork.Orders.Update(order);
@@ -135,7 +149,7 @@ public class PaymentService : IPaymentService
                 _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
                 return;
             }
-            
+
             // Idempotency guard: already failed — nothing to do.
             if (order.PaymentStatus == PaymentStatus.Failed)
             {
@@ -144,7 +158,7 @@ public class PaymentService : IPaymentService
                     order.OrderNumber);
                 return;
             }
-            
+
             order.PaymentStatus = PaymentStatus.Failed;
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
