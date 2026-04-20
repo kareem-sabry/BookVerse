@@ -14,6 +14,7 @@ using BookVerse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -88,10 +89,14 @@ builder.Services.AddRateLimiter(options =>
     options.OnRejected = async (context, token) =>
     {
         context.HttpContext.Response.StatusCode = 429;
-        await context.HttpContext.Response.WriteAsJsonAsync(new BasicResponse
+        context.HttpContext.Response.Headers["Retry-After"] = "60";
+        await context.HttpContext.Response.WriteAsJsonAsync(new ProblemDetails
         {
-            Succeeded = false,
-            Message = "Too many requests. Please try again later."
+            Status = 429,
+            Title = "Too Many Requests",
+            Detail = "You have exceeded the request rate limit. Please try again later.",
+            Instance = context.HttpContext.Request.Path,
+            Type = "https://httpstatuses.com/429"
         }, token);
     };
 });
@@ -306,7 +311,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddAutoMapper(
     cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"],
     AppDomain.CurrentDomain.GetAssemblies()
-    );
+);
 
 // ====================================
 // CORS CONFIGURATION
