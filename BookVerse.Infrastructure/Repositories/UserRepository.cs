@@ -20,4 +20,11 @@ public class UserRepository : IUserRepository
             cancellationToken: cancellationToken);
         return user;
     }
+
+    public async Task<User?> GetUserByPreviousRefreshTokenAsync(string previousRefreshTokenHash,
+        CancellationToken cancellationToken)
+    {
+        return await _context.Users.FirstOrDefaultAsync(u => u.PreviousRefreshToken == previousRefreshTokenHash,
+            cancellationToken);
+    }
 }

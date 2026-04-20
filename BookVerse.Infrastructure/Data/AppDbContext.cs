@@ -160,6 +160,12 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
                 .HasMaxLength(100);
             entity.Property(u => u.RefreshToken)
                 .HasMaxLength(500);
+
+            entity.Property(u => u.PreviousRefreshToken)
+                .HasMaxLength(500);
+
+            entity.HasIndex(u => u.RefreshToken);
+            entity.HasIndex(u => u.PreviousRefreshToken);
         });
     }
 

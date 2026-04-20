@@ -133,6 +133,7 @@ public class AccountService : IAccountService
         var refreshTokenExpirationDateInUtc =
             _dateTimeProvider.UtcNow.AddDays(ApplicationConstants.RefreshTokenExpirationDays);
 
+        user.PreviousRefreshToken = null;
         user.RefreshToken = HashToken(refreshTokenValue);
         user.RefreshTokenExpiresAtUtc = refreshTokenExpirationDateInUtc;
 
@@ -199,12 +200,32 @@ public class AccountService : IAccountService
             };
 
         var hashedIncoming = HashToken(refreshTokenRequest.RefreshToken);
+
         var user = await _unitOfWork.Users.GetUserByRefreshTokenAsync(hashedIncoming, cancellationToken);
 
         if (user == null)
         {
-            _logger.LogWarning("Invalid refresh token attempt");
+            // Check if this is a previously-rotated (consumed) token — indicates possible theft.
 
+            var previousTokenUser =
+                await _unitOfWork.Users.GetUserByPreviousRefreshTokenAsync(hashedIncoming, cancellationToken);
+
+            if (previousTokenUser != null)
+            {
+                _logger.LogWarning(
+                    "Consumed refresh token reuse detected for user {UserId} — revoking all tokens (possible theft)",
+                    previousTokenUser.Id);
+                previousTokenUser.RefreshToken = null;
+                previousTokenUser.PreviousRefreshToken = null;
+                previousTokenUser.RefreshTokenExpiresAtUtc = null;
+
+                await _userManager.UpdateAsync(previousTokenUser);
+            }
+            else
+            {
+                _logger.LogWarning("Invalid refresh token attempt");
+            }
+            
             return new RefreshTokenResponse
             {
                 Succeeded = false,
@@ -230,6 +251,7 @@ public class AccountService : IAccountService
         var refreshTokenExpirationDateInUtc =
             _dateTimeProvider.UtcNow.AddDays(ApplicationConstants.RefreshTokenExpirationDays);
 
+        user.PreviousRefreshToken = user.RefreshToken;
         user.RefreshToken = HashToken(refreshTokenValue);
         user.RefreshTokenExpiresAtUtc = refreshTokenExpirationDateInUtc;
 

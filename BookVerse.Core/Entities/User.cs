@@ -11,6 +11,7 @@ public class User : IdentityUser<Guid>
 
 
     [MaxLength(500)] public string? RefreshToken { get; set; }
+    public string? PreviousRefreshToken { get; set; }
     public DateTime? RefreshTokenExpiresAtUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }
