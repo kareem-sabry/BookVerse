@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using ForgotPasswordRequest = BookVerse.Application.Dtos.User.ForgotPasswordRequest;
 using LoginRequest = BookVerse.Application.Dtos.User.LoginRequest;
 using RegisterRequest = BookVerse.Application.Dtos.User.RegisterRequest;
-using ResetPasswordRequest =  BookVerse.Application.Dtos.User.ResetPasswordRequest;
+using ResetPasswordRequest = BookVerse.Application.Dtos.User.ResetPasswordRequest;
 
 namespace BookVerse.Api.Controllers;
 
@@ -30,13 +30,14 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
         var response = await _accountService.RegisterAsync(registerRequest);
 
-        if (response.Succeeded) return Ok(response);
+        if (response.Succeeded) return StatusCode(StatusCodes.Status201Created, response);
 
         return BadRequest(response);
     }
@@ -64,7 +65,7 @@ public class AuthController : ControllerBase
         var response = await _accountService.LoginAsync(loginRequest);
         if (response.Succeeded) return Ok(response);
 
-        return BadRequest(response);
+        return Unauthorized(response);
     }
 
     [HttpPost("refresh-token")]
@@ -72,7 +73,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest refreshTokenRequest, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest refreshTokenRequest,
+        CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
         {
@@ -184,7 +186,7 @@ public class AuthController : ControllerBase
         var response = await _accountService.ResetPasswordAsync(request);
         if (response.Succeeded) return Ok(response);
 
-        return Unauthorized(response);
+        return BadRequest(response);
     }
 
     [Authorize]
