@@ -154,6 +154,6 @@ public class AdminController : ControllerBase
         var response = await _adminService.DeleteUserAsync(userId, currentAdminEmail);
         if (!response.Succeeded)
             return BadRequest(response);
-        return Ok(response);
+        return NoContent();
     }
 }
