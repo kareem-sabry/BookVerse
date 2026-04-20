@@ -73,7 +73,7 @@ public class AdminService : IAdminService
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
 
-        if (user == null || user.Id == Guid.Empty)
+        if (user == null)
         {
             _logger.LogWarning("Attempted to make non-existent user admin: {UserId}", userId);
             return new BasicResponse

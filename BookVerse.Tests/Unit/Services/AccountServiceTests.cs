@@ -428,5 +428,54 @@ public class AccountServiceTests
         result.Message.Should().Be(ErrorMessages.RefreshTokenExpired);
     }
 
+[Fact]
+    public async Task RefreshTokenAsync_WithConsumedToken_RevokesAllTokensAndReturnsFailure()
+    {
+        // Arrange — simulate replaying an already-rotated refresh token (theft scenario)
+        var consumedToken = "consumed-refresh-token";
+        var hashedConsumed = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(consumedToken)));
+
+        var request = new RefreshTokenRequest { RefreshToken = consumedToken };
+
+        var victimUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Jane",
+            LastName = "Doe",
+            Email = "jane@test.com",
+            PreviousRefreshToken = hashedConsumed,
+            RefreshToken = "current-valid-token-hash",
+            RefreshTokenExpiresAtUtc = _mockDateTimeProvider.Object.UtcNow.AddDays(1)
+        };
+
+        // Active token lookup returns null (the consumed token is no longer current)
+        _mockUserRepository
+            .Setup(x => x.GetUserByRefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Previous token lookup finds the victim user
+        _mockUserRepository
+            .Setup(x => x.GetUserByPreviousRefreshTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(victimUser);
+
+        _mockUserManager.Setup(x => x.UpdateAsync(It.IsAny<User>())).ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var result = await _sut.RefreshTokenAsync(request, CancellationToken.None);
+
+        // Assert
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Be(ErrorMessages.RefreshTokenInvalid);
+
+        // Critical: all tokens must be wiped to contain the breach
+        victimUser.RefreshToken.Should().BeNull();
+        victimUser.PreviousRefreshToken.Should().BeNull();
+        victimUser.RefreshTokenExpiresAtUtc.Should().BeNull();
+
+        _mockUserManager.Verify(x => x.UpdateAsync(victimUser), Times.Once);
+    }
+
     #endregion
 }
