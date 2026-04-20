@@ -65,8 +65,11 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             entity.HasIndex(o => o.UserId);
 
             entity.HasIndex(o => o.OrderDate);
+            entity.HasIndex(o => o.StripePaymentIntentId);
+
             entity.Property(o => o.TotalAmount)
                 .HasPrecision(18, 2);
+            
             entity.HasOne(o => o.User)
                 .WithMany(u => u.Orders)
                 .HasForeignKey(o => o.UserId)
