@@ -20,7 +20,7 @@ public class User : IdentityUser<Guid>
     public Cart? Cart { get; set; }
     public ICollection<Order> Orders { get; set; } = new List<Order>();
 
-    public static User Create(string email, string firstName, string lastName, DateTime createdAt)
+    public static User Create(string email, string firstName, string lastName)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty", nameof(email));
@@ -36,9 +36,7 @@ public class User : IdentityUser<Guid>
             Email = email,
             UserName = email,
             FirstName = firstName,
-            LastName = lastName,
-            CreatedAtUtc = createdAt,
-            UpdatedAtUtc = createdAt
+            LastName = lastName
         };
     }
 

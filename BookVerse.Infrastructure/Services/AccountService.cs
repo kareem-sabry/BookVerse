@@ -78,8 +78,7 @@ public class AccountService : IAccountService
         }
 
 
-        var user = User.Create(registerRequest.Email, registerRequest.FirstName, registerRequest.LastName,
-            _dateTimeProvider.UtcNow);
+        var user = User.Create(registerRequest.Email, registerRequest.FirstName, registerRequest.LastName);
 
         var result = await _userManager.CreateAsync(user, registerRequest.Password);
 
