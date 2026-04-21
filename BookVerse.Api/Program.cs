@@ -176,7 +176,7 @@ builder.Services.AddAuthentication(opt =>
         ValidAudience = jwtOptions.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
         RoleClaimType = ClaimTypes.Role,
-        ClockSkew = TimeSpan.FromMinutes(5)
+        ClockSkew = TimeSpan.Zero
     };
 
     //Jwt events
@@ -310,7 +310,7 @@ builder.Services.AddHealthChecks()
 //AutoMapper
 builder.Services.AddAutoMapper(
     cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"],
-    AppDomain.CurrentDomain.GetAssemblies()
+    typeof(BookVerse.Infrastructure.Profiles.MappingProfile).Assembly
 );
 
 // ====================================
