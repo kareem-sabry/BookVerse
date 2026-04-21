@@ -44,14 +44,16 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
         // Apply Search
         if (!string.IsNullOrWhiteSpace(parameters.SearchTerm)) query = ApplySearch(query, parameters.SearchTerm);
 
-        //Get Total count
+        // Get total count before sorting/paging
         var totalCount = await query.CountAsync(cancellationToken: cancellationToken);
 
+        // Apply sorting: use caller's SortBy if provided, otherwise default to newest first
+        if (!string.IsNullOrWhiteSpace(parameters.SortBy))
+            query = ApplySorting(query, parameters.SortBy, parameters.SortDescending);
+        else
+            query = query.OrderByDescending(b => b.CreatedAtUtc);
 
-        //Default Sorting
-        query = query.OrderByDescending(b => b.CreatedAtUtc);
-
-        //Apply pagination
+        // Apply pagination
         var items = await query
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
@@ -84,12 +86,14 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
 
     public async Task<List<BookAuthor>> GetBookAuthorsAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookAuthors.AsNoTracking().Where(ba => ba.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
+        return await _context.BookAuthors.AsNoTracking().Where(ba => ba.BookId == bookId)
+            .ToListAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<List<BookCategory>> GetBookCategoriesAsync(int bookId, CancellationToken cancellationToken)
     {
-        return await _context.BookCategories.AsNoTracking().Where(bc => bc.BookId == bookId).ToListAsync(cancellationToken: cancellationToken);
+        return await _context.BookCategories.AsNoTracking().Where(bc => bc.BookId == bookId)
+            .ToListAsync(cancellationToken: cancellationToken);
     }
 
     public void RemoveBookAuthors(IEnumerable<BookAuthor> bookAuthors)
