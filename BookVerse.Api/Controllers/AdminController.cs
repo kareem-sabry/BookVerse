@@ -137,13 +137,13 @@ public class AdminController : ControllerBase
     /// </summary>
     /// <param name="userId">The unique identifier of the user to delete.</param>
     /// <returns>A response indicating whether the account was deleted successfully.</returns>
-    /// <response code="200">User account deleted successfully.</response>
+    /// <response code="204">User account deleted successfully.</response>
     /// <response code="400">The operation failed (e.g. attempting to delete yourself).</response>
     /// <response code="401">The request is missing or contains an invalid JWT.</response>
     /// <response code="403">The authenticated user does not have the Admin role.</response>
     /// <response code="404">No user with the given ID was found.</response>
     [HttpDelete("users/{userId:guid}")]
-    [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
