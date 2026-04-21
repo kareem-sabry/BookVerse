@@ -58,6 +58,7 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
             .Skip((parameters.PageNumber - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
             .ToListAsync(cancellationToken: cancellationToken);
+        return new PagedResult<Book>(items, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
     public async Task<Book?> GetExistingBook(Book book, CancellationToken cancellationToken)
