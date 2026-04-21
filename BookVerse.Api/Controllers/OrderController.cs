@@ -17,13 +17,11 @@ namespace BookVerse.Api.Controllers;
 [Produces("application/json")]
 public class OrderController : ControllerBase
 {
-    private readonly ILogger<OrderController> _logger;
     private readonly IOrderService _orderService;
 
-    public OrderController(IOrderService orderService, ILogger<OrderController> logger)
+    public OrderController(IOrderService orderService)
     {
         _orderService = orderService;
-        _logger = logger;
     }
 
     /// <summary>
