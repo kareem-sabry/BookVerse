@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using BookVerse.Application.Dtos.Author;
 using BookVerse.Application.Interfaces;
+using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -56,9 +58,9 @@ public class AuthorsService : IAuthorsService
 
         if (existingAuthor != null)
         {
-            _logger.LogInformation("Author already exists: {FirstName} {LastName}",
+            _logger.LogWarning("Duplicate author creation attempted: {FirstName} {LastName}",
                 author.FirstName, author.LastName);
-            return _mapper.Map<AuthorReadDto>(existingAuthor);
+            throw new ConflictException(ErrorMessages.AuthorAlreadyExists);
         }
 
         await _unitOfWork.Authors.AddAsync(author, cancellationToken);
