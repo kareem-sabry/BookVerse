@@ -79,6 +79,7 @@ public class AccountService : IAccountService
 
 
         var user = User.Create(registerRequest.Email, registerRequest.FirstName, registerRequest.LastName);
+        user.CreatedAtUtc = _dateTimeProvider.UtcNow;
 
         var result = await _userManager.CreateAsync(user, registerRequest.Password);
 
@@ -224,7 +225,7 @@ public class AccountService : IAccountService
             {
                 _logger.LogWarning("Invalid refresh token attempt");
             }
-            
+
             return new RefreshTokenResponse
             {
                 Succeeded = false,
