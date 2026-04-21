@@ -95,7 +95,7 @@ public class AdminService : IAdminService
             return new BasicResponse
             {
                 Succeeded = false,
-                Message = ErrorMessages.InvalidId
+                Message = ErrorMessages.UserNotFound
             };
         }
 
@@ -142,7 +142,7 @@ public class AdminService : IAdminService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = $"{SuccessMessages.AdminRoleGranted} User: {user.Email}"
+            Message = SuccessMessages.AdminRoleGranted
         };
     }
 
@@ -219,7 +219,7 @@ public class AdminService : IAdminService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = $"{SuccessMessages.AdminRoleRemoved} User: {user.Email}"
+            Message = SuccessMessages.AdminRoleRemoved
         };
     }
 
@@ -266,7 +266,7 @@ public class AdminService : IAdminService
         return new BasicResponse
         {
             Succeeded = true,
-            Message = $"User {user.Email} has been deleted successfully."
+            Message = SuccessMessages.AccountDeleted
         };
     }
 }

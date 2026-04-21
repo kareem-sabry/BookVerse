@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using BookVerse.Application.Dtos.Category;
 using BookVerse.Application.Interfaces;
+using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +22,8 @@ public class CategoryService : ICategoryService
         _logger = logger;
     }
 
-    public async Task<PagedResult<CategoryListDto>> GetPagedAsync(QueryParameters parameters,CancellationToken cancellationToken)
+    public async Task<PagedResult<CategoryListDto>> GetPagedAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
         var pagedCategories = await _unitOfWork.Categories.GetPagedAsync(parameters, cancellationToken);
         var categoryDtos = _mapper.Map<IEnumerable<CategoryListDto>>(pagedCategories.Items);
@@ -33,7 +36,7 @@ public class CategoryService : ICategoryService
         );
     }
 
-    public async Task<CategoryReadDto?> GetByIdAsync(int id,CancellationToken cancellationToken)
+    public async Task<CategoryReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)
@@ -49,16 +52,15 @@ public class CategoryService : ICategoryService
     }
 
 
-    public async Task<CategoryReadDto> CreateAsync(CategoryCreateDto categoryDto,CancellationToken cancellationToken)
+    public async Task<CategoryReadDto> CreateAsync(CategoryCreateDto categoryDto, CancellationToken cancellationToken)
     {
         var category = _mapper.Map<Category>(categoryDto);
         var existingCategory = await _unitOfWork.Categories.GetByNameAsync(category.Name, cancellationToken);
 
         if (existingCategory != null)
         {
-            _logger.LogInformation("Category already exists: {CategoryName}", category.Name);
-
-            return _mapper.Map<CategoryReadDto>(existingCategory);
+            _logger.LogWarning("Duplicate category creation attempted: {CategoryName}", category.Name);
+            throw new ConflictException(ErrorMessages.CategoryAlreadyExists);
         }
 
         await _unitOfWork.Categories.AddAsync(category, cancellationToken);
@@ -68,7 +70,7 @@ public class CategoryService : ICategoryService
         return _mapper.Map<CategoryReadDto>(category);
     }
 
-    public async Task<bool> UpdateAsync(int id, CategoryUpdateDto categoryDto,CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(int id, CategoryUpdateDto categoryDto, CancellationToken cancellationToken)
     {
         var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)
@@ -85,7 +87,7 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id,CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
     {
         var category = await _unitOfWork.Categories.GetByIdAsync(id, cancellationToken);
         if (category == null)

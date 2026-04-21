@@ -32,7 +32,9 @@ public static class ErrorMessages
     // Entity errors
     public const string BookNotFound = "Book not found.";
     public const string AuthorNotFound = "Author not found.";
+    public const string AuthorAlreadyExists = "An author with this name already exists.";
     public const string CategoryNotFound = "Category not found.";
+    public const string CategoryAlreadyExists = "A category with this name already exists.";
 
     // Order Errors
     public const string OrderNotFound = "Order not found";
