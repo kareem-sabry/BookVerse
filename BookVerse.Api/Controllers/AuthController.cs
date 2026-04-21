@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
-    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
@@ -39,6 +39,8 @@ public class AuthController : ControllerBase
         var response = await _accountService.RegisterAsync(registerRequest);
 
         if (response.Succeeded) return StatusCode(StatusCodes.Status201Created, response);
+
+        if (response.Message == ErrorMessages.UserAlreadyExists) return Conflict(response);
 
         return BadRequest(response);
     }
@@ -192,7 +194,7 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpDelete("delete-account")]
-    [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> DeleteMyAccount(CancellationToken cancellationToken = default)
@@ -206,7 +208,7 @@ public class AuthController : ControllerBase
             });
 
         var result = await _accountService.DeleteMyAccountAsync(email, cancellationToken);
-        if (result.Succeeded) return Ok(result);
+        if (result.Succeeded) return NoContent();
 
         return BadRequest(result);
     }
