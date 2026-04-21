@@ -292,11 +292,31 @@ public class OrderService : IOrderService
             };
         }
 
+        // Enforce valid payment status transitions.
+        // Completed and Failed are terminal — only Refunded is a valid follow-on from Completed.
+        var isValidTransition = (order.PaymentStatus, updateDto.PaymentStatus) switch
+        {
+            (PaymentStatus.Pending, PaymentStatus.Completed) => true,
+            (PaymentStatus.Pending, PaymentStatus.Failed) => true,
+            (PaymentStatus.Completed, PaymentStatus.Refunded) => true,
+            _ => false
+        };
+
+        if (!isValidTransition)
+        {
+            _logger.LogWarning(
+                "Invalid payment status transition on order {OrderId}: {From} -> {To}",
+                orderId, order.PaymentStatus, updateDto.PaymentStatus);
+            throw new ConflictException(
+                $"Cannot transition payment status from {order.PaymentStatus} to {updateDto.PaymentStatus}.");
+        }
+
         order.PaymentStatus = updateDto.PaymentStatus;
         _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Payment status updated: {OrderId} to {Status}", orderId, updateDto.PaymentStatus);
+        _logger.LogInformation("Payment status updated: {OrderId} from {From} to {To}",
+            orderId, order.PaymentStatus, updateDto.PaymentStatus);
 
         return new BasicResponse
         {
