@@ -3,6 +3,7 @@ using Asp.Versioning;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
+using BookVerse.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,20 +23,23 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    ///     Returns a list of all registered users with their assigned roles.
+    ///     Returns a paginated list of all registered users with their assigned roles.
     ///     Accessible by administrators only.
     /// </summary>
-    /// <returns>A collection of users including their profile details and roles.</returns>
+    /// <param name="parameters">Pagination, sorting, and search parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A paginated collection of users including their profile details and roles.</returns>
     /// <response code="200">Users retrieved successfully.</response>
     /// <response code="401">The request is missing or contains an invalid JWT.</response>
     /// <response code="403">The authenticated user does not have the Admin role.</response>
     [HttpGet("users")]
-    [ProducesResponseType(typeof(IEnumerable<UserWithRolesDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<UserWithRolesDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetAllUsers(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAllUsers([FromQuery] QueryParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        var users = await _adminService.GetAllUsersAsync(cancellationToken);
+        var users = await _adminService.GetAllUsersAsync(parameters, cancellationToken);
         return Ok(users);
     }
 
@@ -86,10 +90,10 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> MakeUserAdmin(Guid userId, CancellationToken cancellationToken = default)
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
-        
+
         if (string.IsNullOrWhiteSpace(currentAdminEmail))
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
-        
+
         var response = await _adminService.MakeUserAdminAsync(userId, currentAdminEmail);
         if (!response.Succeeded)
             return BadRequest(response);
@@ -116,7 +120,7 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> RemoveAdminRole(Guid userId, CancellationToken cancellationToken = default)
     {
         var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
+
         if (!Guid.TryParse(rawId, out var currentAdminId))
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
 
@@ -147,10 +151,10 @@ public class AdminController : ControllerBase
     public async Task<ActionResult> DeleteUser(Guid userId, CancellationToken cancellationToken = default)
     {
         var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
-        
+
         if (string.IsNullOrWhiteSpace(currentAdminEmail))
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
-        
+
         var response = await _adminService.DeleteUserAsync(userId, currentAdminEmail);
         if (!response.Succeeded)
             return BadRequest(response);

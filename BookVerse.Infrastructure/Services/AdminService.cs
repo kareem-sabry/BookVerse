@@ -2,6 +2,7 @@
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,14 +23,29 @@ public class AdminService : IAdminService
         _roleManager = roleManager;
     }
 
-    public async Task<IEnumerable<UserWithRolesDto>> GetAllUsersAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<UserWithRolesDto>> GetAllUsersAsync(QueryParameters parameters,
+        CancellationToken cancellationToken)
     {
-        var users = await _userManager.Users.ToListAsync(cancellationToken);
+        var query = _userManager.Users.AsQueryable();
 
-        if (!users.Any()) return Enumerable.Empty<UserWithRolesDto>();
+        if (!string.IsNullOrWhiteSpace(parameters.SearchTerm))
+        {
+            var term = parameters.SearchTerm.Trim();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.Contains(term)) ||
+                u.FirstName.Contains(term) ||
+                u.LastName.Contains(term));
+        }
 
-        // UserManager.GetRolesAsync issues one query per user — acceptable here
-        // because admin listing is low-frequency with small user counts.
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var users = await query
+            .OrderBy(u => u.Email)
+            .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+            .Take(parameters.PageSize)
+            .ToListAsync(cancellationToken);
+
+        // GetRolesAsync issues one query per user; bounded to page size (≤100) so acceptable.
         var result = new List<UserWithRolesDto>();
         foreach (var user in users)
         {
@@ -44,7 +60,7 @@ public class AdminService : IAdminService
             });
         }
 
-        return result;
+        return new PagedResult<UserWithRolesDto>(result, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
     public async Task<UserWithRolesDto?> GetUserByIdAsync(Guid userId)
