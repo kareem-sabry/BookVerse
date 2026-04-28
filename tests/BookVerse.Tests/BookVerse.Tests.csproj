@@ -24,10 +24,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\BookVerse.Api\BookVerse.Api.csproj"/>
-        <ProjectReference Include="..\BookVerse.Application\BookVerse.Application.csproj"/>
-        <ProjectReference Include="..\BookVerse.Core\BookVerse.Core.csproj"/>
-        <ProjectReference Include="..\BookVerse.Infrastructure\BookVerse.Infrastructure.csproj"/>
+        <ProjectReference Include="..\..\src\BookVerse.Api\BookVerse.Api.csproj"/>
+        <ProjectReference Include="..\..\src\BookVerse.Application\BookVerse.Application.csproj"/>
+        <ProjectReference Include="..\..\src\BookVerse.Core\BookVerse.Core.csproj"/>
+        <ProjectReference Include="..\..\src\BookVerse.Infrastructure\BookVerse.Infrastructure.csproj"/>
     </ItemGroup>
 
 </Project>
