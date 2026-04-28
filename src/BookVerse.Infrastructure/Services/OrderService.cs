@@ -202,11 +202,7 @@ public class OrderService : IOrderService
         {
             _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
             await _unitOfWork.RollbackTransactionAsync();
-            return new BasicResponse
-            {
-                Succeeded = false,
-                Message = ErrorMessages.OrderNotFound
-            };
+            throw new NotFoundException(ErrorMessages.OrderNotFound);
         }
 
         // Only pending or processing orders can be cancelled
@@ -262,11 +258,20 @@ public class OrderService : IOrderService
             return new BasicResponse { Succeeded = false, Message = ErrorMessages.OrderNotFound };
         }
 
-        // Enforce forward-only transitions. A Delivered or Cancelled order is terminal.
-        var terminalStatuses = new[] { OrderStatus.Delivered, OrderStatus.Cancelled };
-        if (terminalStatuses.Contains(order.Status))
+        // Enforce forward-only transitions via an explicit allowlist — mirrors payment status logic.
+
+        var isValidTransition = (order.Status, updateDto.Status) switch
+        {
+            (OrderStatus.Pending, OrderStatus.Processing) => true,
+            (OrderStatus.Processing, OrderStatus.Shipped) => true,
+            (OrderStatus.Shipped, OrderStatus.Delivered) => true,
+            (OrderStatus.Pending, OrderStatus.Cancelled) => true,
+            (OrderStatus.Processing, OrderStatus.Cancelled) => true,
+            _ => false
+        };
+        if (!isValidTransition)
             throw new ConflictException(
-                $"{ErrorMessages.CannotUpdateTerminalOrderStatus}: {order.Status}");
+                $"{ErrorMessages.CannotUpdateTerminalOrderStatus}: {order.Status} → {updateDto.Status}");
 
         order.Status = updateDto.Status;
         if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
@@ -311,12 +316,14 @@ public class OrderService : IOrderService
                 $"Cannot transition payment status from {order.PaymentStatus} to {updateDto.PaymentStatus}.");
         }
 
+        var previousPaymentStatus = order.PaymentStatus;
+
         order.PaymentStatus = updateDto.PaymentStatus;
         _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Payment status updated: {OrderId} from {From} to {To}",
-            orderId, order.PaymentStatus, updateDto.PaymentStatus);
+            orderId, previousPaymentStatus, updateDto.PaymentStatus);
 
         return new BasicResponse
         {

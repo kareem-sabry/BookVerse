@@ -58,6 +58,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden"),
             ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
+            PaymentProcessingException => (StatusCodes.Status502BadGateway, "Payment Processing Error"),
+
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid Argument"),
             _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")

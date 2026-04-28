@@ -10,7 +10,7 @@ public static class ErrorMessages
     public const string CannotModifyOwnAccount = "You cannot modify your own account.";
     public const string RegistrationFailed = "Registration failed.";
     public const string InvalidPasswordResetRequest = "Invalid password reset request.";
-
+    public const string AccessDenied = "You do not have permission to access this resource.";
 
     // Role errors
     public const string InvalidRole = "Invalid role specified.";

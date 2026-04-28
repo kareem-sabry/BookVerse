@@ -17,6 +17,7 @@ public class PaymentServiceTests
     private readonly Mock<ILogger<PaymentService>> _mockLogger;
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<IStripePaymentIntentService> _mockStripePaymentIntentService;
     private readonly PaymentService _sut;
 
     public PaymentServiceTests()
@@ -24,6 +25,7 @@ public class PaymentServiceTests
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<PaymentService>>();
         _mockOrderRepository = new Mock<IOrderRepository>();
+        _mockStripePaymentIntentService = new Mock<IStripePaymentIntentService>();
 
         _mockUnitOfWork.Setup(x => x.Orders).Returns(_mockOrderRepository.Object);
 
@@ -34,7 +36,11 @@ public class PaymentServiceTests
             WebhookSecret = "whsec_fake"
         });
 
-        _sut = new PaymentService(_mockUnitOfWork.Object, stripeOptions, _mockLogger.Object);
+        _sut = new PaymentService(
+            _mockUnitOfWork.Object,
+            stripeOptions,
+            _mockLogger.Object,
+            _mockStripePaymentIntentService.Object);
     }
 
     #region CreatePaymentIntentAsync Tests
