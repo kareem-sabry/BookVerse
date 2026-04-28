@@ -299,7 +299,7 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddTransient<PaymentIntentService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 // Token Processing

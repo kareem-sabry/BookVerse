@@ -10,16 +10,19 @@ using Stripe;
 
 namespace BookVerse.Infrastructure.Services;
 
-public class PaymentService : IPaymentService
+public class PaymentService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PaymentService> _logger;
+    private readonly PaymentIntentService _paymentIntentService;
     private readonly StripeOptions _stripeOptions;
 
-    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions, ILogger<PaymentService> logger)
+    public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions, ILogger<PaymentService> logger,
+        PaymentIntentService paymentIntentService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _paymentIntentService = paymentIntentService;
         _stripeOptions = stripeOptions.Value;
     }
 
@@ -40,6 +43,26 @@ public class PaymentService : IPaymentService
             throw new ValidationException(ErrorMessages.OrderNotInPendingPaymentStatus);
         }
 
+        // Idempotency guard : if a PaymentIntent already exists for this order , return teh existing client secret instead of creating a second one.
+        if (!string.IsNullOrEmpty(order.StripePaymentIntentId))
+        {
+            _logger.LogInformation(
+                "PaymentIntent already exists for order {OrderId}: {PaymentIntentId} - returning existing", orderId,
+                order.StripePaymentIntentId);
+
+
+            var existingIntent = await _paymentIntentService.GetAsync(
+                order.StripePaymentIntentId, cancellationToken: cancellationToken);
+
+            return new PaymentIntentResponseDto
+            {
+                ClientSecret = existingIntent.ClientSecret,
+                PublishableKey = _stripeOptions.PublishableKey,
+                OrderId = orderId,
+                Amount = order.TotalAmount
+            };
+        }
+
         var options = new PaymentIntentCreateOptions
         {
             Amount = (long)(order.TotalAmount * 100),
@@ -51,23 +74,27 @@ public class PaymentService : IPaymentService
             }
         };
 
-        var service = new PaymentIntentService();
+        var requestOptions = new RequestOptions
+        {
+            IdempotencyKey = $"order_{orderId}"
+        };
 
-        Stripe.PaymentIntent paymentIntent;
+        PaymentIntent paymentIntent;
         try
         {
-            paymentIntent = await service.CreateAsync(options, cancellationToken: cancellationToken);
+            paymentIntent = await _paymentIntentService.CreateAsync(options, requestOptions, cancellationToken: cancellationToken);
         }
         catch (StripeException ex)
         {
             _logger.LogError(ex,
                 "Stripe API error creating PaymentIntent for order {OrderId}, user {UserId}",
                 orderId, userId);
-            throw new ValidationException($"Payment processing failed: {ex.StripeError?.Message ?? ex.Message}");
+            throw new PaymentProcessingException($"Payment processing failed: {ex.StripeError?.Message ?? ex.Message}",
+                ex);
         }
 
         order.StripePaymentIntentId = paymentIntent.Id;
-        
+
         _unitOfWork.Orders.Update(order);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
