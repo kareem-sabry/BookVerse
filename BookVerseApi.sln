@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Api", "BookVerse.Api\BookVerse.Api.csproj", "{A02C1CEB-4E8F-4206-8A5C-E9FA096E93C8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Api", "src\BookVerse.Api\BookVerse.Api.csproj", "{A02C1CEB-4E8F-4206-8A5C-E9FA096E93C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Core", "BookVerse.Core\BookVerse.Core.csproj", "{58CE40C2-DD2C-48AF-A9D5-3849B40A5516}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Core", "src\BookVerse.Core\BookVerse.Core.csproj", "{58CE40C2-DD2C-48AF-A9D5-3849B40A5516}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Infrastructure", "BookVerse.Infrastructure\BookVerse.Infrastructure.csproj", "{CD63CD86-B76D-4188-96E8-5F4035CA5FD8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Infrastructure", "src\BookVerse.Infrastructure\BookVerse.Infrastructure.csproj", "{CD63CD86-B76D-4188-96E8-5F4035CA5FD8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Application", "BookVerse.Application\BookVerse.Application.csproj", "{8844858E-7F1F-47A5-8DC1-FF786033D99C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Application", "src\BookVerse.Application\BookVerse.Application.csproj", "{8844858E-7F1F-47A5-8DC1-FF786033D99C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Tests", "BookVerse.Tests\BookVerse.Tests.csproj", "{0CB91A5A-AB6F-4BB0-A358-5F50B9B14497}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookVerse.Tests", "tests\BookVerse.Tests\BookVerse.Tests.csproj", "{0CB91A5A-AB6F-4BB0-A358-5F50B9B14497}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

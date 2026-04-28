@@ -1,0 +1,31 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Rider / Visual Studio / VS Code
+.vs/
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker/
+Dockerfile
+docker-compose.yml
+
+# Tests build output (optional but good)
+**/TestResults/
+
+# NuGet cache
+**/packages/
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
