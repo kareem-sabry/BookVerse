@@ -96,9 +96,12 @@ public class OrderService : IOrderService
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("OrderNumber") == true ||
                                            ex.InnerException?.Message.Contains("UNIQUE") == true)
         {
-            _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — retrying with new number",
+            _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — rolling back and retrying",
                 order.OrderNumber);
+            await _unitOfWork.RollbackTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
             order.OrderNumber = GenerateOrderNumber();
+            await _unitOfWork.Orders.AddAsync(order, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 

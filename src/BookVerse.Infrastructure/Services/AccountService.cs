@@ -384,6 +384,7 @@ public class AccountService : IAccountService
 
         // Invalidate the refresh token
         user.RefreshToken = null;
+        user.PreviousRefreshToken = null;
         user.RefreshTokenExpiresAtUtc = null;
         await _userManager.UpdateAsync(user);
 
