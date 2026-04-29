@@ -38,7 +38,8 @@ public class AuthorsService : IAuthorsService
 
     public async Task<AuthorReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var author = await _unitOfWork.Authors.GetByIdAsync(id, cancellationToken);
+        var author = await _unitOfWork.Authors.GetByIdWithBooksAsync(id, cancellationToken);
+
         if (author == null)
         {
             _logger.LogWarning("Author not found with ID: {AuthorId}", id);
