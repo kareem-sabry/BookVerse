@@ -1,14 +1,14 @@
-﻿using Stripe;
+﻿using BookVerse.Application.Dtos.Payment;
 
 namespace BookVerse.Application.Interfaces;
 
 public interface IStripePaymentIntentService
 {
-    Task<PaymentIntent> CreateAsync(
-        PaymentIntentCreateOptions options,
-        RequestOptions? requestOptions = null,
+    Task<PaymentIntentResult> CreateAsync(
+        CreatePaymentIntentRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<PaymentIntent> GetAsync(string paymentIntentId,
+    Task<PaymentIntentResult> GetAsync(
+        string paymentIntentId,
         CancellationToken cancellationToken = default);
 }
