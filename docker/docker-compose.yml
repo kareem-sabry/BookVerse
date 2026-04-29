@@ -28,6 +28,8 @@ services:
       - EmailOptions__SmtpPort=${SMTP_PORT}
       - EmailOptions__FromEmail=${FROM_EMAIL}
       - EmailOptions__FromName=${FROM_NAME}
+      - EmailOptions__SmtpUsername=${SMTP_USERNAME}
+      - EmailOptions__SmtpPassword=${SMTP_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
