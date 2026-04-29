@@ -9,6 +9,6 @@ public class AuthorUpdateDto
     public string FirstName { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "LastName is required")]
-    [StringLength(100, MinimumLength = 1, ErrorMessage = "First name must be between 1 and 100 characters")]
+    [StringLength(100, MinimumLength = 1, ErrorMessage = "Last name must be between 1 and 100 characters")]
     public string LastName { get; set; } = string.Empty;
 }

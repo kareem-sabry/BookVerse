@@ -12,14 +12,6 @@ public class BookRepository : GenericRepository<Book>, IBookRepository
     {
     }
 
-    public virtual async Task<IEnumerable<Book>> GetAllAsync(CancellationToken cancellationToken)
-    {
-        return await _dbSet.AsNoTracking()
-            .Include(b => b.BookAuthors).ThenInclude(ba => ba.Author)
-            .Include(b => b.BookCategories).ThenInclude(bc => bc.Category)
-            .ToListAsync(cancellationToken: cancellationToken);
-    }
-
     public async Task<Book?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken)
     {
         return await _dbSet

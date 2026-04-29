@@ -19,7 +19,7 @@ public class PaymentService : IPaymentService
     private readonly StripeOptions _stripeOptions;
 
     public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions, ILogger<PaymentService> logger,
-        IStripePaymentIntentService paymentIntentService,IStripeWebhookConstructor webhookConstructor)
+        IStripePaymentIntentService paymentIntentService, IStripeWebhookConstructor webhookConstructor)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -49,20 +49,44 @@ public class PaymentService : IPaymentService
         if (!string.IsNullOrEmpty(order.StripePaymentIntentId))
         {
             _logger.LogInformation(
-                "PaymentIntent already exists for order {OrderId}: {PaymentIntentId} - returning existing", orderId,
+                "PaymentIntent already exists for order {OrderId}: {PaymentIntentId} - attempting reuse",
+                orderId,
                 order.StripePaymentIntentId);
 
-
-            var existingIntent = await _paymentIntentService.GetAsync(
-                order.StripePaymentIntentId, cancellationToken: cancellationToken);
-
-            return new PaymentIntentResponseDto
+            try
             {
-                ClientSecret = existingIntent.ClientSecret,
-                PublishableKey = _stripeOptions.PublishableKey,
-                OrderId = orderId,
-                Amount = order.TotalAmount
-            };
+                var existingIntent = await _paymentIntentService.GetAsync(
+                    order.StripePaymentIntentId,
+                    cancellationToken: cancellationToken);
+
+                return new PaymentIntentResponseDto
+                {
+                    ClientSecret = existingIntent.ClientSecret,
+                    PublishableKey = _stripeOptions.PublishableKey,
+                    OrderId = orderId,
+                    Amount = order.TotalAmount
+                };
+            }
+            catch (StripeException ex) when (ex.StripeError?.Code == "resource_missing")
+            {
+                _logger.LogWarning(
+                    ex,
+                    "PaymentIntent {Id} not found in Stripe for order {OrderId}. Creating a new one.",
+                    order.StripePaymentIntentId,
+                    orderId);
+
+                // fall through → recreate intent
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Stripe error while retrieving PaymentIntent {Id} for order {OrderId}",
+                    order.StripePaymentIntentId,
+                    orderId);
+
+                throw; // or convert to a domain exception if you prefer consistency
+            }
         }
 
         var request = new CreatePaymentIntentRequest(
@@ -78,7 +102,7 @@ public class PaymentService : IPaymentService
 
         var result = await _paymentIntentService.CreateAsync(request, cancellationToken);
         order.StripePaymentIntentId = result.Id;
-        
+
         _unitOfWork.Orders.Update(order);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

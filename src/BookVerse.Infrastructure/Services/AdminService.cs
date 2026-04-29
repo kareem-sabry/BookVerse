@@ -63,7 +63,7 @@ public class AdminService : IAdminService
         return new PagedResult<UserWithRolesDto>(result, totalCount, parameters.PageNumber, parameters.PageSize);
     }
 
-    public async Task<UserWithRolesDto?> GetUserByIdAsync(Guid userId)
+    public async Task<UserWithRolesDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
 
@@ -85,7 +85,8 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<BasicResponse> MakeUserAdminAsync(Guid userId, string currentAdminEmail)
+    public async Task<BasicResponse> MakeUserAdminAsync(Guid userId, string currentAdminEmail,
+        CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
 
@@ -146,7 +147,8 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<BasicResponse> RemoveAdminRoleAsync(Guid userId, Guid currentAdminId)
+    public async Task<BasicResponse> RemoveAdminRoleAsync(Guid userId, Guid currentAdminId,
+        CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
@@ -223,7 +225,8 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<BasicResponse> DeleteUserAsync(Guid userId, string currentAdminEmail)
+    public async Task<BasicResponse> DeleteUserAsync(Guid userId, string currentAdminEmail,
+        CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
