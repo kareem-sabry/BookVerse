@@ -15,14 +15,16 @@ public class PaymentService : IPaymentService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PaymentService> _logger;
     private readonly IStripePaymentIntentService _paymentIntentService;
+    private readonly IStripeWebhookConstructor _webhookConstructor;
     private readonly StripeOptions _stripeOptions;
 
     public PaymentService(IUnitOfWork unitOfWork, IOptions<StripeOptions> stripeOptions, ILogger<PaymentService> logger,
-        IStripePaymentIntentService paymentIntentService)
+        IStripePaymentIntentService paymentIntentService,IStripeWebhookConstructor webhookConstructor)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _paymentIntentService = paymentIntentService;
+        _webhookConstructor = webhookConstructor;
         _stripeOptions = stripeOptions.Value;
     }
 
@@ -115,7 +117,7 @@ public class PaymentService : IPaymentService
         Event stripeEvent;
         try
         {
-            stripeEvent = EventUtility.ConstructEvent(
+            stripeEvent = _webhookConstructor.ConstructEvent(
                 json, stripeSignature, _stripeOptions.WebhookSecret);
         }
         catch (StripeException ex)

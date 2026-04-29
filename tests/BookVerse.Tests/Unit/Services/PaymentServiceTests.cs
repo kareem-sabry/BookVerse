@@ -8,6 +8,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Stripe;
 using Order = BookVerse.Core.Entities.Order;
 
 namespace BookVerse.Tests.Unit.Services;
@@ -18,6 +19,7 @@ public class PaymentServiceTests
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IStripePaymentIntentService> _mockStripePaymentIntentService;
+    private readonly Mock<IStripeWebhookConstructor> _mockWebhookConstructor;
     private readonly PaymentService _sut;
 
     public PaymentServiceTests()
@@ -26,7 +28,7 @@ public class PaymentServiceTests
         _mockLogger = new Mock<ILogger<PaymentService>>();
         _mockOrderRepository = new Mock<IOrderRepository>();
         _mockStripePaymentIntentService = new Mock<IStripePaymentIntentService>();
-
+        _mockWebhookConstructor = new Mock<IStripeWebhookConstructor>();
         _mockUnitOfWork.Setup(x => x.Orders).Returns(_mockOrderRepository.Object);
 
         var stripeOptions = Options.Create(new StripeOptions
@@ -40,7 +42,8 @@ public class PaymentServiceTests
             _mockUnitOfWork.Object,
             stripeOptions,
             _mockLogger.Object,
-            _mockStripePaymentIntentService.Object);
+            _mockStripePaymentIntentService.Object,
+            _mockWebhookConstructor.Object);
     }
 
     #region CreatePaymentIntentAsync Tests
@@ -125,17 +128,36 @@ public class PaymentServiceTests
 
     #region HandleWebhookAsync — Idempotency Tests
 
+    private static Event BuildFakeEvent(string eventType, string paymentIntentId)
+    {
+        var paymentIntent = new PaymentIntent
+        {
+            Id = paymentIntentId
+        };
+
+        return new Event
+        {
+            Type = eventType,
+            Data = new EventData { Object = paymentIntent }
+        };
+    }
+
     [Fact]
     public async Task HandleWebhookAsync_WhenOrderAlreadyCompleted_IsNoOp()
     {
-        // Arrange — simulate a webhook for an order already marked Completed
+        // Arrange
         var paymentIntentId = "pi_already_processed";
+        var fakeEvent = BuildFakeEvent(EventTypes.PaymentIntentSucceeded, paymentIntentId);
+
+        _mockWebhookConstructor
+            .Setup(x => x.ConstructEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(fakeEvent);
 
         var order = new Order
         {
             Id = 1,
             OrderNumber = "ORD-20250101-000001",
-            PaymentStatus = PaymentStatus.Completed, // already completed
+            PaymentStatus = PaymentStatus.Completed,
             Status = OrderStatus.Processing,
             StripePaymentIntentId = paymentIntentId
         };
@@ -144,19 +166,12 @@ public class PaymentServiceTests
             .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        // Act — note: we call the internal processing logic via a helper below.
-        // Because EventUtility.ConstructEvent requires a real Stripe signature,
-        // this test validates the idempotency guard on the already-completed branch.
-        // The guard fires before any update, so SaveChanges must never be called.
+        // Act — calls the real service method
+        await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
 
-        // Simulate the post-signature-verification path directly:
-        await SimulateSucceededWebhookProcessing(paymentIntentId);
-
-        // Assert
-        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never,
-            "A duplicate webhook for an already-completed order must not trigger Update");
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never,
-            "SaveChangesAsync must not be called when the event is a duplicate");
+        // Assert — idempotency guard must fire; no updates allowed
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -164,6 +179,11 @@ public class PaymentServiceTests
     {
         // Arrange
         var paymentIntentId = "pi_already_failed";
+        var fakeEvent = BuildFakeEvent(EventTypes.PaymentIntentPaymentFailed, paymentIntentId);
+
+        _mockWebhookConstructor
+            .Setup(x => x.ConstructEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(fakeEvent);
 
         var order = new Order
         {
@@ -177,8 +197,10 @@ public class PaymentServiceTests
             .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
-        await SimulateFailedWebhookProcessing(paymentIntentId);
+        // Act
+        await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
 
+        // Assert
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -186,51 +208,24 @@ public class PaymentServiceTests
     [Fact]
     public async Task HandleWebhookAsync_WhenOrderNotFound_ReturnsGracefully()
     {
-        // Arrange — Stripe sends a webhook for a PaymentIntent with no matching order
+        // Arrange
         var paymentIntentId = "pi_no_matching_order";
+        var fakeEvent = BuildFakeEvent(EventTypes.PaymentIntentSucceeded, paymentIntentId);
+
+        _mockWebhookConstructor
+            .Setup(x => x.ConstructEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(fakeEvent);
 
         _mockOrderRepository
             .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
-        // Act — should log a warning and return without throwing
-        await SimulateSucceededWebhookProcessing(paymentIntentId);
+        // Act — should log warning and return without throwing
+        await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
 
         // Assert
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    /// <summary>
-    /// Simulates the PaymentIntentSucceeded processing branch without going through
-    /// Stripe signature verification (which requires a real webhook secret and raw body).
-    /// Calls the repository path that the service would reach after signature passes.
-    /// </summary>
-    private async Task SimulateSucceededWebhookProcessing(string paymentIntentId)
-    {
-        var order = await _mockOrderRepository.Object
-            .GetByStripePaymentIntentIdAsync(paymentIntentId, CancellationToken.None);
-
-        if (order == null) return;
-        if (order.PaymentStatus == PaymentStatus.Completed) return; // idempotency guard
-
-        order.PaymentStatus = PaymentStatus.Completed;
-        order.Status = OrderStatus.Processing;
-        _mockOrderRepository.Object.Update(order);
-        await _mockUnitOfWork.Object.SaveChangesAsync(CancellationToken.None);
-    }
-
-    private async Task SimulateFailedWebhookProcessing(string paymentIntentId)
-    {
-        var order = await _mockOrderRepository.Object
-            .GetByStripePaymentIntentIdAsync(paymentIntentId, CancellationToken.None);
-
-        if (order == null) return;
-        if (order.PaymentStatus == PaymentStatus.Failed) return; // idempotency guard
-
-        order.PaymentStatus = PaymentStatus.Failed;
-        _mockOrderRepository.Object.Update(order);
-        await _mockUnitOfWork.Object.SaveChangesAsync(CancellationToken.None);
     }
 
     #endregion
