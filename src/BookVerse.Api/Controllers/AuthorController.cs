@@ -26,7 +26,8 @@ public class AuthorController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any,
+        VaryByQueryKeys = new[] { "*" })]
     [ProducesResponseType(typeof(PagedResult<AuthorListDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAuthors([FromQuery] QueryParameters parameters,
         CancellationToken cancellationToken = default)
