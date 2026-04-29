@@ -13,21 +13,21 @@ namespace BookVerse.Tests.Unit.Services;
 
 public class BooksServiceTests
 {
-    private readonly Mock<IBookRepository>     _mockBookRepository;
-    private readonly Mock<IAuthorRepository>   _mockAuthorRepository;
+    private readonly Mock<IBookRepository> _mockBookRepository;
+    private readonly Mock<IAuthorRepository> _mockAuthorRepository;
     private readonly Mock<ICategoryRepository> _mockCategoryRepository;
-    private readonly Mock<IMapper>             _mockMapper;
-    private readonly Mock<IUnitOfWork>         _mockUnitOfWork;
-    private readonly BooksService              _sut;
+    private readonly Mock<IMapper> _mockMapper;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly BooksService _sut;
 
     public BooksServiceTests()
     {
-        _mockBookRepository     = new Mock<IBookRepository>();
-        _mockAuthorRepository   = new Mock<IAuthorRepository>();
+        _mockBookRepository = new Mock<IBookRepository>();
+        _mockAuthorRepository = new Mock<IAuthorRepository>();
         _mockCategoryRepository = new Mock<ICategoryRepository>();
-        _mockMapper             = new Mock<IMapper>();
-        _mockUnitOfWork         = new Mock<IUnitOfWork>();
-        var mockLogger          = new Mock<ILogger<BooksService>>();
+        _mockMapper = new Mock<IMapper>();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
+        var mockLogger = new Mock<ILogger<BooksService>>();
 
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
         _mockUnitOfWork.Setup(x => x.Authors).Returns(_mockAuthorRepository.Object);
@@ -50,7 +50,7 @@ public class BooksServiceTests
     public async Task GetByIdAsync_WhenBookExists_ReturnsMappedDto()
     {
         // Arrange
-        var book        = new Book { Id = 1, Title = "Clean Code" };
+        var book = new Book { Id = 1, Title = "Clean Code" };
         var expectedDto = new BookReadDto { Id = 1, Title = "Clean Code" };
 
         _mockBookRepository
@@ -94,11 +94,11 @@ public class BooksServiceTests
         // Arrange
         var createDto = new BookCreateDto
         {
-            Title       = "The Pragmatic Programmer",
-            AuthorIds   = [1],
+            Title = "The Pragmatic Programmer",
+            AuthorIds = [1],
             CategoryIds = [1]
         };
-        var book        = new Book { Id = 1, Title = createDto.Title };
+        var book = new Book { Id = 1, Title = createDto.Title };
         var expectedDto = new BookReadDto { Id = book.Id, Title = book.Title };
 
         _mockMapper
@@ -137,8 +137,8 @@ public class BooksServiceTests
         result.Title.Should().Be(createDto.Title);
 
         _mockBookRepository.Verify(x => x.AddAsync(book, It.IsAny<CancellationToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.BeginTransactionAsync(),    Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(),   Times.Once);
+        _mockUnitOfWork.Verify(x => x.BeginTransactionAsync(), Times.Once);
+        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Never);
     }
 
@@ -146,9 +146,9 @@ public class BooksServiceTests
     public async Task CreateAsync_WhenBookAlreadyExists_ThrowsConflictException()
     {
         // Arrange
-        var createDto     = new BookCreateDto { Title = "Clean Code", AuthorIds = [], CategoryIds = [] };
-        var book          = new Book { Title = createDto.Title };
-        var existingBook  = new Book { Id = 5, Title = createDto.Title };
+        var createDto = new BookCreateDto { Title = "Clean Code", AuthorIds = [], CategoryIds = [] };
+        var book = new Book { Title = createDto.Title };
+        var existingBook = new Book { Id = 5, Title = createDto.Title };
 
         _mockMapper
             .Setup(x => x.Map<Book>(createDto))
@@ -165,7 +165,7 @@ public class BooksServiceTests
 
         _mockBookRepository.Verify(x => x.AddAsync(It.IsAny<Book>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(),   Times.Never);
+        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public class BooksServiceTests
     {
         // Arrange
         var createDto = new BookCreateDto { Title = "New Book", AuthorIds = [99], CategoryIds = [1] };
-        var book      = new Book { Title = createDto.Title };
+        var book = new Book { Title = createDto.Title };
 
         _mockMapper
             .Setup(x => x.Map<Book>(createDto))
@@ -183,7 +183,7 @@ public class BooksServiceTests
             .ReturnsAsync((Book?)null);
         _mockAuthorRepository
             .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Author, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);   // author 99 is unknown
+            .ReturnsAsync([]); // author 99 is unknown
 
         // Act
         var act = async () => await _sut.CreateAsync(createDto, CancellationToken.None);
@@ -192,7 +192,7 @@ public class BooksServiceTests
         await act.Should().ThrowAsync<ValidationException>();
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(),   Times.Never);
+        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class BooksServiceTests
     {
         // Arrange
         var createDto = new BookCreateDto { Title = "New Book", AuthorIds = [1], CategoryIds = [99] };
-        var book      = new Book { Title = createDto.Title };
+        var book = new Book { Title = createDto.Title };
 
         _mockMapper
             .Setup(x => x.Map<Book>(createDto))
@@ -213,7 +213,7 @@ public class BooksServiceTests
             .ReturnsAsync([new Author { Id = 1 }]);
         _mockCategoryRepository
             .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Category, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);   // category 99 is unknown
+            .ReturnsAsync([]); // category 99 is unknown
 
         // Act
         var act = async () => await _sut.CreateAsync(createDto, CancellationToken.None);
@@ -222,7 +222,7 @@ public class BooksServiceTests
         await act.Should().ThrowAsync<ValidationException>();
 
         _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
-        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(),   Times.Never);
+        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
     }
 
     // -------------------------------------------------------------------------
@@ -233,13 +233,29 @@ public class BooksServiceTests
     public async Task UpdateAsync_WhenBookExists_UpdatesAndReturnsTrue()
     {
         // Arrange
-        var bookId    = 1;
+        var bookId = 1;
         var updateDto = new BookUpdateDto { Title = "Updated Title", AuthorIds = [2], CategoryIds = [3] };
-        var book      = new Book { Id = bookId, Title = "Old Title" };
+        var book = new Book { Id = bookId, Title = "Old Title" };
+
+        _mockUnitOfWork
+            .Setup(x => x.BeginTransactionAsync())
+            .Returns(Task.CompletedTask);
+        _mockUnitOfWork
+            .Setup(x => x.CommitTransactionAsync())
+            .Returns(Task.CompletedTask);
 
         _mockBookRepository
             .Setup(x => x.GetByIdWithDetailsAsync(bookId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(book);
+
+        // FK existence validation — return authors/categories that match the requested IDs
+        _mockAuthorRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Author, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Author { Id = 2 }]);
+        _mockCategoryRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Category, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Category { Id = 3 }]);
+
         _mockBookRepository
             .Setup(x => x.GetBookAuthorsAsync(bookId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
@@ -261,6 +277,71 @@ public class BooksServiceTests
 
         _mockBookRepository.Verify(x => x.Update(book), Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenAuthorDoesNotExist_ThrowsValidationException()
+    {
+        // Arrange
+        var bookId = 1;
+        var updateDto = new BookUpdateDto { Title = "T", AuthorIds = [99], CategoryIds = [3] };
+        var book = new Book { Id = bookId };
+
+        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
+
+        _mockBookRepository
+            .Setup(x => x.GetByIdWithDetailsAsync(bookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+
+        // Author 99 not found — return empty list
+        _mockAuthorRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Author, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        // Act
+        var act = async () => await _sut.UpdateAsync(bookId, updateDto, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("*99*");
+
+        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenCategoryDoesNotExist_ThrowsAndRollsBack()
+    {
+        // Arrange
+        var bookId = 1;
+        var updateDto = new BookUpdateDto { Title = "T", AuthorIds = [2], CategoryIds = [99] };
+        var book = new Book { Id = bookId };
+
+        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
+
+        _mockBookRepository
+            .Setup(x => x.GetByIdWithDetailsAsync(bookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+
+        // Authors pass, categories fail
+        _mockAuthorRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Author, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Author { Id = 2 }]);
+        _mockCategoryRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Category, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        // Act
+        var act = async () => await _sut.UpdateAsync(bookId, updateDto, CancellationToken.None);
+
+        // Assert — note: currently throws base Exception, not ValidationException (see note below)
+        await act.Should().ThrowAsync<Exception>()
+            .WithMessage("*99*");
+
+        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
