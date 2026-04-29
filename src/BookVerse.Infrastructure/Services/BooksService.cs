@@ -129,30 +129,60 @@ public class BooksService : IBooksService
             return false;
         }
 
-        //Update basic properties
+        //Validate authors exist before modifying
+        var existingAuthors =
+            (await _unitOfWork.Authors.FindAsync(a => bookDto.AuthorIds.Contains(a.Id), cancellationToken))
+            .Select(a => a.Id)
+            .ToHashSet();
+
+        var missingAuthor = bookDto.AuthorIds.FirstOrDefault(id => !existingAuthors.Contains(id));
+
+        if (missingAuthor != default)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ValidationException($"Author with ID {missingAuthor} does not exist.");
+        }
+
+        //Validate categories exist
+
+        var existingCategories =
+            (await _unitOfWork.Categories.FindAsync(c => bookDto.CategoryIds.Contains(c.Id), cancellationToken))
+            .Select(c => c.Id).ToHashSet();
+
+        var missingCategory = bookDto.CategoryIds.FirstOrDefault(id => !existingCategories.Contains(id));
+
+        if (missingCategory != default)
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw new ValidationException($"Category with ID {missingCategory} does not exist.");
+        }
+
+        //update basic properties
         _mapper.Map(bookDto, book);
         _unitOfWork.Books.Update(book);
 
         //Remove existing author relationships
+
         var existingAuthorRelations = await _unitOfWork.Books.GetBookAuthorsAsync(id, cancellationToken);
         _unitOfWork.Books.RemoveBookAuthors(existingAuthorRelations);
 
-        //Add new author relationships
+        // Add new author relationships
+
         foreach (var authorId in bookDto.AuthorIds)
         {
             var bookAuthor = new BookAuthor
             {
                 BookId = id,
-                AuthorId = authorId,
+                AuthorId = authorId
             };
             await _unitOfWork.Books.AddBookAuthorAsync(bookAuthor, cancellationToken);
         }
 
-        //Remove existing category relationships
+        // Remove existing category relationships
         var existingCategoryRelations = await _unitOfWork.Books.GetBookCategoriesAsync(id, cancellationToken);
         _unitOfWork.Books.RemoveBookCategories(existingCategoryRelations);
 
-        //Add new category relationships
+        // Add new category relationships
         foreach (var categoryId in bookDto.CategoryIds)
         {
             var bookCategory = new BookCategory
