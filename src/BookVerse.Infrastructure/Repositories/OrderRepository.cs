@@ -95,6 +95,6 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
 
     public async Task<Order?> GetByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(o => o.StripePaymentIntentId == paymentIntentId, cancellationToken: cancellationToken);
+        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(o => o.StripePaymentIntentId == paymentIntentId, cancellationToken: cancellationToken);
     }
 }

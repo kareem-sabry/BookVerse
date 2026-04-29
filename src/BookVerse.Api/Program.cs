@@ -300,6 +300,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddTransient<IStripePaymentIntentService, StripePaymentIntentService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 // Token Processing
