@@ -26,7 +26,8 @@ public class CategoryController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any,
+        VaryByQueryKeys = new[] { "*" })]
     [ProducesResponseType(typeof(PagedResult<CategoryListDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCategories([FromQuery] QueryParameters parameters,
         CancellationToken cancellationToken = default)
