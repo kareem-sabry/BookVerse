@@ -63,46 +63,27 @@ public class PaymentService : IPaymentService
             };
         }
 
-        var options = new PaymentIntentCreateOptions
-        {
-            Amount = (long)(order.TotalAmount * 100),
-            Currency = "aed",
-            Metadata = new Dictionary<string, string>
+        var request = new CreatePaymentIntentRequest(
+            Amount: (long)(order.TotalAmount * 100),
+            Currency: "aed",
+            CustomerId: null,
+            Metadata: new Dictionary<string, string>
             {
                 { "orderId", orderId.ToString() },
                 { "orderNumber", order.OrderNumber }
             }
-        };
+        );
 
-        var requestOptions = new RequestOptions
-        {
-            IdempotencyKey = $"order_{orderId}"
-        };
-
-        PaymentIntent paymentIntent;
-        try
-        {
-            paymentIntent =
-                await _paymentIntentService.CreateAsync(options, requestOptions, cancellationToken: cancellationToken);
-        }
-        catch (StripeException ex)
-        {
-            _logger.LogError(ex,
-                "Stripe API error creating PaymentIntent for order {OrderId}, user {UserId}",
-                orderId, userId);
-            throw new PaymentProcessingException($"Payment processing failed: {ex.StripeError?.Message ?? ex.Message}",
-                ex);
-        }
-
-        order.StripePaymentIntentId = paymentIntent.Id;
-
+        var result = await _paymentIntentService.CreateAsync(request, cancellationToken);
+        order.StripePaymentIntentId = result.Id;
+        
         _unitOfWork.Orders.Update(order);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new PaymentIntentResponseDto
         {
-            ClientSecret = paymentIntent.ClientSecret,
+            ClientSecret = result.ClientSecret,
             PublishableKey = _stripeOptions.PublishableKey,
             OrderId = orderId,
             Amount = order.TotalAmount

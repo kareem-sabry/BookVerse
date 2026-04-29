@@ -4,7 +4,6 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using BookVerse.Api.Middlewares;
-using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
