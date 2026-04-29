@@ -69,7 +69,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 
             entity.Property(o => o.TotalAmount)
                 .HasPrecision(18, 2);
-            
+
             entity.HasOne(o => o.User)
                 .WithMany(u => u.Orders)
                 .HasForeignKey(o => o.UserId)
@@ -89,6 +89,8 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
                 .WithMany()
                 .HasForeignKey(oi => oi.BookId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(oi => oi.BookId);
         });
     }
 
@@ -113,6 +115,9 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .WithMany()
             .HasForeignKey(ci => ci.BookId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CartItem>()
+            .HasIndex(ci => ci.BookId);
     }
 
     private static void ConfigureBookCategoryRelationship(ModelBuilder modelBuilder)
