@@ -5,6 +5,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: bookverse-api:${IMAGE_TAG}  
     container_name: bookverse-api
     ports:
       - "5000:8080"
@@ -33,9 +34,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,6 +62,21 @@ services:
       retries: 10
       start_period: 30s
     restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    container_name: bookverse-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: [ "CMD","redis-cli","ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
   sqldata:
+  redisdata:
