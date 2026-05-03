@@ -102,6 +102,13 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddResponseCaching();
 builder.Services.AddMemoryCache();
+
+// Redis distributed cache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "BookVerse";
+});
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1, 0);
@@ -303,7 +310,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddTransient<IStripePaymentIntentService, StripePaymentIntentService>();
 builder.Services.AddTransient<PaymentIntentService>();
 builder.Services.AddTransient<IStripeWebhookConstructor, StripeWebhookConstructor>();
-
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 // Token Processing

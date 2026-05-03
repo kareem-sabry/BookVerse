@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BookVerse.Application.Dtos.Book;
 using BookVerse.Application.Interfaces;
+using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
@@ -11,14 +12,16 @@ namespace BookVerse.Infrastructure.Services;
 public class BooksService : IBooksService
 {
     private readonly ILogger<BooksService> _logger;
+    private readonly ICacheService _cache;
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
 
-    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger)
+    public BooksService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<BooksService> logger, ICacheService cache)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<PagedResult<BookReadDto>> GetPagedAsync(BookQueryParameters parameters,
@@ -37,6 +40,13 @@ public class BooksService : IBooksService
 
     public async Task<BookReadDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
+        var cacheKey = CacheKeys.Book(id);
+        // trying redis first
+        var cached = await _cache.GetAsync<BookReadDto>(cacheKey, cancellationToken);
+        if (cached is not null)
+            return cached;
+
+        // cache miss - retrieving from database
         var book = await _unitOfWork.Books.GetByIdWithDetailsAsync(id, cancellationToken);
 
         if (book == null)
@@ -45,7 +55,10 @@ public class BooksService : IBooksService
             return null;
         }
 
-        return _mapper.Map<BookReadDto>(book);
+        var dto = _mapper.Map<BookReadDto>(book);
+        // Store in Redis for 5 minutes
+        await _cache.SetAsync(cacheKey, dto, TimeSpan.FromMinutes(5), cancellationToken);
+        return dto;
     }
 
     public async Task<BookReadDto> CreateAsync(BookCreateDto bookDto, CancellationToken cancellationToken)
@@ -195,7 +208,10 @@ public class BooksService : IBooksService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
-
+        
+        //Invalidate cache after update
+        await _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken);
+        
         _logger.LogInformation("Updated book: {BookId}", id);
         return true;
     }
@@ -212,6 +228,10 @@ public class BooksService : IBooksService
 
         _unitOfWork.Books.Delete(book);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        // Invalidate cache so stale data is not retrieved.
+        await _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken);
+        
         _logger.LogInformation("Deleted book: {BookId}", id);
         return true;
     }
