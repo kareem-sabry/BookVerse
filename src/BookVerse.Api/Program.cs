@@ -21,6 +21,7 @@ using Microsoft.OpenApi.Models;
 using Stripe;
 using AccountService = BookVerse.Infrastructure.Services.AccountService;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
 // ====================================
@@ -33,9 +34,9 @@ if (builder.Environment.IsDevelopment())
 // ====================================
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
+    options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.MigrationsAssembly("BookVerse.Infrastructure"))
+        npgsqlOptions => npgsqlOptions.MigrationsAssembly("BookVerse.Infrastructure"))
 );
 
 // ====================================

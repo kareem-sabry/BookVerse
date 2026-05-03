@@ -42,8 +42,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             .Property(b => b.Price)
             .HasPrecision(18, 4);
         modelBuilder.Entity<Book>()
-            .Property(b => b.RowVersion)
-            .IsRowVersion();
+            .UseXminAsConcurrencyToken();
         modelBuilder.Entity<CartItem>()
             .Property(c => c.PriceAtAdd)
             .HasPrecision(18, 4);
