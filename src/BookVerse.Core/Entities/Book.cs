@@ -13,9 +13,7 @@ public class Book : IAuditable, IEntity
     public decimal Price { get; set; }
     public DateOnly PublishDate { get; set; }
     public int QuantityInStock { get; set; }
-
-    [Timestamp] 
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    
     public ICollection<BookAuthor> BookAuthors { get; set; } = new List<BookAuthor>();
     public ICollection<BookCategory> BookCategories { get; set; } = new List<BookCategory>();
     public DateTime CreatedAtUtc { get; set; }
