@@ -3,14 +3,20 @@ WORKDIR /src
 
 COPY BookVerseApi.sln ./
 
-# 🔥 IMPORTANT: keep real folder structure
-COPY src/ ./src/
-COPY tests/ ./tests/
+COPY src/BookVerse.Core/*.csproj src/BookVerse.Core/
+COPY src/BookVerse.Application/*.csproj src/BookVerse.Application/
+COPY src/BookVerse.Infrastructure/*.csproj src/BookVerse.Infrastructure/
+COPY src/BookVerse.Api/*.csproj src/BookVerse.Api/
+
+COPY tests/BookVerse.Tests/*.csproj tests/BookVerse.Tests/
 
 RUN dotnet restore BookVerseApi.sln
 
+COPY . .
+
 WORKDIR /src/src/BookVerse.Api
 RUN dotnet build BookVerse.Api.csproj -c Release -o /app/build --no-restore
+
 
 FROM build AS publish
 RUN dotnet publish BookVerse.Api.csproj -c Release -o /app/publish \

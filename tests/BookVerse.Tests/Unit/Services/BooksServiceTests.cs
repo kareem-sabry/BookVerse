@@ -18,6 +18,7 @@ public class BooksServiceTests
     private readonly Mock<ICategoryRepository> _mockCategoryRepository;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ICacheService> _mockCache;
     private readonly BooksService _sut;
 
     public BooksServiceTests()
@@ -27,6 +28,7 @@ public class BooksServiceTests
         _mockCategoryRepository = new Mock<ICategoryRepository>();
         _mockMapper = new Mock<IMapper>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockCache = new Mock<ICacheService>();
         var mockLogger = new Mock<ILogger<BooksService>>();
 
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
@@ -39,7 +41,7 @@ public class BooksServiceTests
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        _sut = new BooksService(_mockUnitOfWork.Object, _mockMapper.Object, mockLogger.Object);
+        _sut = new BooksService(_mockUnitOfWork.Object, _mockMapper.Object, mockLogger.Object, _mockCache.Object);
     }
 
     // -------------------------------------------------------------------------
@@ -53,12 +55,19 @@ public class BooksServiceTests
         var book = new Book { Id = 1, Title = "Clean Code" };
         var expectedDto = new BookReadDto { Id = 1, Title = "Clean Code" };
 
+        _mockCache.Setup(x => x.GetAsync<BookReadDto>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BookReadDto?)null); // force cache miss
+
         _mockBookRepository
             .Setup(x => x.GetByIdWithDetailsAsync(book.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(book);
         _mockMapper
             .Setup(x => x.Map<BookReadDto>(book))
             .Returns(expectedDto);
+
+        _mockCache.Setup(x => x.SetAsync(
+            It.IsAny<string>(),
+            expectedDto, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _sut.GetByIdAsync(book.Id, CancellationToken.None);
@@ -67,12 +76,24 @@ public class BooksServiceTests
         result.Should().NotBeNull();
         result!.Id.Should().Be(book.Id);
         result.Title.Should().Be(book.Title);
+
+        _mockCache.Verify(x =>
+                x.SetAsync(
+                    It.IsAny<string>(),
+                    expectedDto,
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
     public async Task GetByIdAsync_WhenBookDoesNotExist_ReturnsNull()
     {
         // Arrange
+
+        _mockCache.Setup(x => x.GetAsync<BookReadDto>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BookReadDto?)null);
+
         _mockBookRepository
             .Setup(x => x.GetByIdWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Book?)null);
@@ -82,6 +103,14 @@ public class BooksServiceTests
 
         // Assert
         result.Should().BeNull();
+
+        _mockCache.Verify(x =>
+                x.SetAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<BookReadDto>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()),
+            times: Times.Never);
     }
 
     // -------------------------------------------------------------------------
