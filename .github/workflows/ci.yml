@@ -29,18 +29,18 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore BookVerseApi.sln
+        run: dotnet restore backend/BookVerseApi.sln
 
       - name: Build
         env:
           AutoMapper__LicenseKey: ${{ secrets.AUTOMAPPER_LICENSE_KEY }}
-        run: dotnet build BookVerseApi.sln --no-restore -c Release
+        run: dotnet build backend/BookVerseApi.sln --no-restore -c Release
 
       - name: Run tests
         env:
           AutoMapper__LicenseKey: ${{ secrets.AUTOMAPPER_LICENSE_KEY }}
         run: >
-          dotnet test BookVerseApi.sln
+          dotnet test backend/BookVerseApi.sln
           --no-build
           -c Release
           --verbosity normal

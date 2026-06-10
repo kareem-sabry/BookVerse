@@ -1,17 +1,23 @@
 ﻿name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches: [ master ]
 
 jobs:
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -23,9 +29,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: docker/Dockerfile
+          context: backend
+          file: backend/docker/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/bookverse-api:latest
-            ghcr.io/${{ github.repository_owner }}/bookverse-api:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/bookverse-api:${{ github.event.workflow_run.head_sha }}

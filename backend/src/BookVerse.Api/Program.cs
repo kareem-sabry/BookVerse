@@ -29,6 +29,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ====================================
 if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
+
 // ====================================
 // DATABASE
 // ====================================
@@ -36,13 +37,13 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.MigrationsAssembly("BookVerse.Infrastructure"))
+        npgsqlOptions => npgsqlOptions.MigrationsAssembly("BookVerse.Infrastructure")
+    )
 );
 
 // ====================================
 // HTTP CONTEXT & CONTROLLERS
 // ====================================
-
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -52,52 +53,66 @@ builder.Services.AddRateLimiter(options =>
     // Global rate limit
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? context.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
             partition => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 100,
                 QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
+                Window = TimeSpan.FromMinutes(1),
+            }
+        )
+    );
 
     /// Strict per-IP rate limit for auth endpoints
-    options.AddPolicy("auth", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
+    options.AddPolicy(
+        "auth",
+        context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                }
+            )
+    );
 
     // Moderate per-IP rate limit for public endpoints
-    options.AddPolicy("api", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 50,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            }));
+    options.AddPolicy(
+        "api",
+        context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 50,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                }
+            )
+    );
 
     options.OnRejected = async (context, token) =>
     {
         context.HttpContext.Response.StatusCode = 429;
         context.HttpContext.Response.Headers["Retry-After"] = "60";
-        await context.HttpContext.Response.WriteAsJsonAsync(new ProblemDetails
-        {
-            Status = 429,
-            Title = "Too Many Requests",
-            Detail = "You have exceeded the request rate limit. Please try again later.",
-            Instance = context.HttpContext.Request.Path,
-            Type = "https://httpstatuses.com/429"
-        }, token);
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new ProblemDetails
+            {
+                Status = 429,
+                Title = "Too Many Requests",
+                Detail = "You have exceeded the request rate limit. Please try again later.",
+                Instance = context.HttpContext.Request.Path,
+                Type = "https://httpstatuses.com/429",
+            },
+            token
+        );
     };
 });
 builder.Services.AddResponseCaching();
@@ -109,24 +124,29 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
     options.InstanceName = "BookVerse";
 });
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new ApiVersion(1, 0);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-    options.ApiVersionReader = ApiVersionReader.Combine(new UrlSegmentApiVersionReader(),
-        new HeaderApiVersionReader("X-Api-Version")
-    );
-}).AddApiExplorer(options =>
-{
-    options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
-});
+builder
+    .Services.AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = ApiVersionReader.Combine(
+            new UrlSegmentApiVersionReader(),
+            new HeaderApiVersionReader("X-Api-Version")
+        );
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
 // ====================================
 // IDENTITY CONFIGURATION
 // ====================================
 
-builder.Services.AddIdentity<User, IdentityRole<Guid>>(opt =>
+builder
+    .Services.AddIdentity<User, IdentityRole<Guid>>(opt =>
     {
         //Password requirements
         opt.Password.RequireDigit = true;
@@ -145,7 +165,8 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(opt =>
 
         //Token providers
         opt.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
-    }).AddEntityFrameworkStores<AppDbContext>()
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
 // Configure password reset token lifespan
@@ -158,60 +179,74 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(opt =>
 // JWT AUTHENTICATION
 // ====================================
 
-builder.Services.AddAuthentication(opt =>
-{
-    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    var jwtOptions = builder.Configuration.GetSection(JwtOptions.JwtOptionsKey).Get<JwtOptions>();
-
-    if (jwtOptions == null)
-        throw new ValidationException(
-            $"JWT configuration is missing. Please configure '{JwtOptions.JwtOptionsKey}' section.");
-
-    if (string.IsNullOrEmpty(jwtOptions.Secret) || jwtOptions.Secret.Length < 32)
-        throw new ArgumentException("JWT Secret must be at least 32 characters long.");
-
-    options.TokenValidationParameters = new TokenValidationParameters
+builder
+    .Services.AddAuthentication(opt =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtOptions.Issuer,
-        ValidAudience = jwtOptions.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
-        RoleClaimType = ClaimTypes.Role,
-        ClockSkew = TimeSpan.Zero
-    };
-
-    //Jwt events
-    options.Events = new JwtBearerEvents
+        opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
     {
-        OnAuthenticationFailed = context =>
-        {
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning("Authentication failed: {Message}", context.Exception.Message);
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = context =>
-        {
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            var userEmail = context.Principal?.Identity?.Name;
-            logger.LogDebug("Token validated for user: {User}", userEmail);
+        var jwtOptions = builder
+            .Configuration.GetSection(JwtOptions.JwtOptionsKey)
+            .Get<JwtOptions>();
 
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
+        if (jwtOptions == null)
+            throw new ValidationException(
+                $"JWT configuration is missing. Please configure '{JwtOptions.JwtOptionsKey}' section."
+            );
+
+        if (string.IsNullOrEmpty(jwtOptions.Secret) || jwtOptions.Secret.Length < 32)
+            throw new ArgumentException("JWT Secret must be at least 32 characters long.");
+
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning("Authentication challenge: {Error} - {ErrorDescription}",
-                context.Error, context.ErrorDescription);
-            return Task.CompletedTask;
-        }
-    };
-});
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret)),
+            RoleClaimType = ClaimTypes.Role,
+            ClockSkew = TimeSpan.Zero,
+        };
+
+        //Jwt events
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<
+                    ILogger<Program>
+                >();
+                logger.LogWarning("Authentication failed: {Message}", context.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<
+                    ILogger<Program>
+                >();
+                var userEmail = context.Principal?.Identity?.Name;
+                logger.LogDebug("Token validated for user: {User}", userEmail);
+
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<
+                    ILogger<Program>
+                >();
+                logger.LogWarning(
+                    "Authentication challenge: {Error} - {ErrorDescription}",
+                    context.Error,
+                    context.ErrorDescription
+                );
+                return Task.CompletedTask;
+            },
+        };
+    });
 
 // ====================================
 // AUTHORIZATION POLICIES
@@ -229,70 +264,75 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
-
 builder.Services.AddSwaggerGen(options =>
 {
     // API Info
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "BookVerse API",
-        Version = "v1",
-        Description = "A comprehensive bookstore API - Version 1",
-        Contact = new OpenApiContact
+    options.SwaggerDoc(
+        "v1",
+        new OpenApiInfo
         {
-            Name = "BookVerse Support",
-            Email = "support@bookverse.com"
+            Title = "BookVerse API",
+            Version = "v1",
+            Description = "A comprehensive bookstore API - Version 1",
+            Contact = new OpenApiContact
+            {
+                Name = "BookVerse Support",
+                Email = "support@bookverse.com",
+            },
         }
-    });
+    );
 
     // JWT Authentication
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your JWT token."
-    });
-
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+    options.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+            Name = "Authorization",
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter 'Bearer' [space] and then your JWT token.",
         }
-    });
+    );
+
+    options.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer",
+                    },
+                },
+                Array.Empty<string>()
+            },
+        }
+    );
 });
 
 // ====================================
 // OPTIONS PATTERN CONFIGURATION
 // ====================================
 
-builder.Services.Configure<JwtOptions>(
-    builder.Configuration.GetSection(JwtOptions.JwtOptionsKey));
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.JwtOptionsKey));
 
-builder.Services.Configure<AdminUserOptions>(
-    builder.Configuration.GetSection("AdminUser"));
+builder.Services.Configure<AdminUserOptions>(builder.Configuration.GetSection("AdminUser"));
 
-builder.Services.Configure<EmailOptions>(
-    builder.Configuration.GetSection("EmailOptions"));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("EmailOptions"));
 
-builder.Services.AddOptions<StripeOptions>()
+builder
+    .Services.AddOptions<StripeOptions>()
     .BindConfiguration(StripeOptions.StripeOptionsKey)
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
 // ====================================
 // DEPENDENCY INJECTION
 // ====================================
-
 
 // Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -315,9 +355,10 @@ builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
 // Token Processing
 builder.Services.AddScoped<IAuthTokenProcessor, AuthTokenProcessorService>();
+
 // Health Check
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>();
+builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
+
 //AutoMapper
 builder.Services.AddAutoMapper(
     cfg => cfg.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"],
@@ -330,20 +371,25 @@ builder.Services.AddAutoMapper(
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevelopmentPolicy", policy =>
-    {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
+    options.AddPolicy(
+        "DevelopmentPolicy",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
+        }
+    );
 
-    options.AddPolicy("ProductionPolicy", policy =>
-    {
-        policy.WithOrigins("https://bookverseapi.com")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
+    options.AddPolicy(
+        "ProductionPolicy",
+        policy =>
+        {
+            policy
+                .WithOrigins("https://bookverseapi.com")
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        }
+    );
 });
 
 // ====================================
@@ -376,7 +422,14 @@ using (var scope = app.Services.CreateScope())
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var adminOptions = services.GetRequiredService<IOptions<AdminUserOptions>>();
         var dateTimeProvider = services.GetRequiredService<IDateTimeProvider>();
-        await DbInitializer.SeedDataAsync(context, userManager, roleManager, adminOptions, logger, dateTimeProvider);
+        await DbInitializer.SeedDataAsync(
+            context,
+            userManager,
+            roleManager,
+            adminOptions,
+            logger,
+            dateTimeProvider
+        );
         logger.LogInformation("Database seeding completed successfully");
     }
     catch (Exception ex)
@@ -410,16 +463,18 @@ else
 app.UseExceptionHandler(opt => { });
 
 //Security Headers middleware
-app.Use(async (context, next) =>
-{
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    context.Response.Headers["X-Frame-Options"] = "DENY";
-    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
-    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'";
+app.Use(
+    async (context, next) =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'";
 
-    await next();
-});
+        await next();
+    }
+);
 
 app.UseHttpsRedirection();
 app.UseRateLimiter();
@@ -428,33 +483,37 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 // Detailed health check response — returns JSON with component statuses.
 // This endpoint is intentionally unauthenticated so load balancers and
 // container orchestrators (Docker, Kubernetes) can probe it without credentials.
-app.MapHealthChecks("/health", new HealthCheckOptions
-{
-    ResponseWriter = async (context, report) =>
+app.MapHealthChecks(
+    "/health",
+    new HealthCheckOptions
     {
-        context.Response.ContentType = "application/json";
-        var dateTimeProvider = context.RequestServices.GetRequiredService<IDateTimeProvider>();
-
-        var result = new
+        ResponseWriter = async (context, report) =>
         {
-            status = report.Status.ToString(),
-            checkedAt = dateTimeProvider.UtcNow,
-            duration = report.TotalDuration,
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration,
-                error = app.Environment.IsDevelopment() ? e.Value.Exception?.Message : null
-            })
-        };
+            context.Response.ContentType = "application/json";
+            var dateTimeProvider = context.RequestServices.GetRequiredService<IDateTimeProvider>();
 
-        await context.Response.WriteAsJsonAsync(result);
+            var result = new
+            {
+                status = report.Status.ToString(),
+                checkedAt = dateTimeProvider.UtcNow,
+                duration = report.TotalDuration,
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    duration = e.Value.Duration,
+                    error = app.Environment.IsDevelopment() ? e.Value.Exception?.Message : null,
+                }),
+            };
+
+            await context.Response.WriteAsJsonAsync(result);
+        },
     }
-});
+);
 
 app.Run();
