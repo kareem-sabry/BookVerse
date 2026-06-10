@@ -1,10 +1,17 @@
 import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { NavbarComponent } from './shared/components/navbar/navbar.component';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+    selector: 'app-root',
+    standalone: true,
+    imports: [RouterOutlet, NavbarComponent],
+    template: `
+        <app-navbar />
+        <main class="container mt-4">
+            <router-outlet />
+        </main>
+    `,
+    styles: [],
 })
-export class AppComponent {
-  title = 'bookverse-client';
-}
+export class AppComponent {}
