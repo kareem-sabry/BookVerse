@@ -6,7 +6,8 @@
 *.sln.docstates
 *.DotSettings.user
 .env
-# JetBrider Rider
+
+# JetBrains / Rider
 .idea/
 *.sln.iml
 
@@ -23,7 +24,6 @@
 !.vscode/extensions.json
 
 # User secrets
-appsettings.Development.json
 secrets.json
 
 # Test results
@@ -55,5 +55,13 @@ bld/
 **/packages/*
 !**/packages/build/
 
-# Rider
-.idea/
+# Angular / Node
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+
+# Generated diagnostics
+msbuild_dump.txt
