@@ -53,6 +53,7 @@ public static class ErrorMessages
     public const string StripeWebhookSignatureInvalid = "Invalid Stripe webhook signature.";
     public const string StripeWebhookEventParsingFailed = "Failed to parse Stripe webhook event.";
     public const string PaymentIntentAlreadyExists = "Payment intent already exists for this order.";
+    public const string StripeRetrievalFailed = "Payment retrieval failed.";
 
     public const string OrderNotInPendingPaymentStatus =
         "Payment can only be initiated for orders with pending payment status.";

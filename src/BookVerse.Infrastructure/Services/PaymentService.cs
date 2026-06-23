@@ -79,13 +79,9 @@ public class PaymentService : IPaymentService
             }
             catch (StripeException ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Stripe error while retrieving PaymentIntent {Id} for order {OrderId}",
-                    order.StripePaymentIntentId,
-                    orderId);
-
-                throw; // or convert to a domain exception if you prefer consistency
+                _logger.LogError(ex, "Stripe error while retrieving PaymentIntent {Id} for order {OrderId}",
+                    order.StripePaymentIntentId, orderId);
+                throw new PaymentProcessingException(ErrorMessages.StripeRetrievalFailed);
             }
         }
 

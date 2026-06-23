@@ -826,11 +826,9 @@ public class OrderServiceTests
 
         _mockOrderRepository.Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
-        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CancelOrderAsync(userId, orderId, It.IsAny<CancellationToken>());
+        var result = await _sut.CancelOrderAsync(userId, orderId, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -838,7 +836,9 @@ public class OrderServiceTests
         result.Message.Should().Contain("Cannot cancel order");
         order.Status.Should().Be(OrderStatus.Shipped);
 
-        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
+        // No transaction should be touched — early return before BeginTransactionAsync
+        _mockUnitOfWork.Verify(x => x.BeginTransactionAsync(), Times.Never);
+        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Never);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
     }
@@ -891,7 +891,9 @@ public class OrderServiceTests
             .ThrowAsync<NotFoundException>()
             .WithMessage(ErrorMessages.OrderNotFound);
 
-        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
+        // No transaction should be touched — throws before BeginTransactionAsync
+        _mockUnitOfWork.Verify(x => x.BeginTransactionAsync(), Times.Never);
+        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Never);
         _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
     }
 
