@@ -8,6 +8,7 @@ using BookVerse.Core.Enums;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
 using BookVerse.Core.Exceptions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookVerse.Infrastructure.Services;
@@ -45,7 +46,7 @@ public class OrderService : IOrderService
             throw new ValidationException(ErrorMessages.EmptyCart);
         }
 
-// Single bulk fetch of all books needed for this order.
+        // Single bulk fetch of all books needed for this order.
         // Used for both stock validation and stock deduction — eliminates N+1.
         var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
         var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
@@ -93,9 +94,10 @@ public class OrderService : IOrderService
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("OrderNumber") == true ||
-                                           ex.InnerException?.Message.Contains("UNIQUE") == true)
+        catch (DbUpdateException ex)
+            when (ex.InnerException is SqlException { Number: 2627 or 2601 })
         {
+            // 2627 = unique key / PK violation, 2601 = duplicate key in unique index
             _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — rolling back and retrying",
                 order.OrderNumber);
             await _unitOfWork.RollbackTransactionAsync();
@@ -134,12 +136,26 @@ public class OrderService : IOrderService
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
-            _logger.LogWarning("Stock concurrency conflict for user {UserId} — order rolled back", userId);
-
+            // Rowversion conflict — another transaction modified a book between our read and write.
+            // Re-fetch fresh stock data to determine the actual cause before surfacing an error.
+            _logger.LogWarning(ex, "Rowversion conflict during stock deduction for user {UserId} — revalidating stock",
+                userId);
             await _unitOfWork.RollbackTransactionAsync();
-            throw new ValidationException(ErrorMessages.InsufficientStock);
+
+            var freshBooks = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+                .ToDictionary(b => b.Id);
+
+            foreach (var cartItem in cart.CartItems)
+            {
+                if (!freshBooks.TryGetValue(cartItem.BookId, out var book) ||
+                    book.QuantityInStock < cartItem.Quantity)
+                    throw new ValidationException(ErrorMessages.InsufficientStock);
+            }
+
+            // Stock is still sufficient — conflict was transient; surface as retriable
+            throw new ConflictException("Order could not be placed due to concurrent activity. Please try again.");
         }
 
         await _unitOfWork.CommitTransactionAsync();
@@ -198,21 +214,16 @@ public class OrderService : IOrderService
 
     public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
-        await _unitOfWork.BeginTransactionAsync();
-
         var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
-            await _unitOfWork.RollbackTransactionAsync();
             throw new NotFoundException(ErrorMessages.OrderNotFound);
         }
 
-        // Only pending or processing orders can be cancelled
         if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Processing)
         {
-            _logger.LogWarning("Cannot cancel order with status: {Status}", order.Status);
-            await _unitOfWork.RollbackTransactionAsync();
+            _logger.LogWarning("Cannot cancel order {OrderId} with status: {Status}", orderId, order.Status);
             return new BasicResponse
             {
                 Succeeded = false,
@@ -220,27 +231,35 @@ public class OrderService : IOrderService
             };
         }
 
-        // Update order status
-        order.Status = OrderStatus.Cancelled;
-        _unitOfWork.Orders.Update(order);
-
-        // Restore book stock
-        var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
-        var booksToRestore =
-            (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
-            .ToDictionary(b => b.Id);
-
-        foreach (var orderItem in order.OrderItems)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
-            {
-                book.QuantityInStock += orderItem.Quantity;
-                _unitOfWork.Books.Update(book);
-            }
-        }
+            order.Status = OrderStatus.Cancelled;
+            _unitOfWork.Orders.Update(order);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _unitOfWork.CommitTransactionAsync();
+            var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
+            var booksToRestore =
+                (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
+                .ToDictionary(b => b.Id);
+
+            foreach (var orderItem in order.OrderItems)
+            {
+                if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
+                {
+                    book.QuantityInStock += orderItem.Quantity;
+                    _unitOfWork.Books.Update(book);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cancel order {OrderId} for user {UserId}", orderId, userId);
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
 
         _logger.LogInformation("Order cancelled successfully: {OrderId}", orderId);
 
@@ -262,7 +281,6 @@ public class OrderService : IOrderService
         }
 
         // Enforce forward-only transitions via an explicit allowlist — mirrors payment status logic.
-
         var isValidTransition = (order.Status, updateDto.Status) switch
         {
             (OrderStatus.Pending, OrderStatus.Processing) => true,
