@@ -105,7 +105,20 @@ public class OrderService : IOrderService
                 order.OrderNumber);
             await _unitOfWork.RollbackTransactionAsync();
             await _unitOfWork.BeginTransactionAsync();
-            order.OrderNumber = GenerateOrderNumber();
+
+            order = new Order
+            {
+                UserId = order.UserId,
+                OrderNumber = GenerateOrderNumber(),
+                OrderDate = order.OrderDate,
+                Status = order.Status,
+                ShippingAddress = order.ShippingAddress,
+                PaymentMethod = order.PaymentMethod,
+                PaymentStatus = order.PaymentStatus,
+                Notes = order.Notes,
+                TotalAmount = order.TotalAmount
+            };
+            
             await _unitOfWork.Orders.AddAsync(order, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
