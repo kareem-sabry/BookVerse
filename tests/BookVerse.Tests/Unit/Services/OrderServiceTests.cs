@@ -25,6 +25,7 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _mockOrderRepository;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly OrderService _sut;
+    private readonly Mock<ICacheService> _mockCacheService;
 
     public OrderServiceTests()
     {
@@ -36,6 +37,7 @@ public class OrderServiceTests
         _mockCartRepository = new Mock<ICartRepository>();
         _mockBookRepository = new Mock<IBookRepository>();
         _mockOrderItemRepository = new Mock<IGenericRepository<OrderItem>>();
+        _mockCacheService = new Mock<ICacheService>();
 
         // Default date for all tests
         _mockDateTimeProvider.Setup(x => x.UtcNow)
@@ -45,12 +47,16 @@ public class OrderServiceTests
         _mockUnitOfWork.Setup(x => x.Carts).Returns(_mockCartRepository.Object);
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
         _mockUnitOfWork.Setup(x => x.OrderItems).Returns(_mockOrderItemRepository.Object);
+        _mockCacheService
+            .Setup(x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _sut = new OrderService(
             _mockUnitOfWork.Object,
             _mockMapper.Object,
             _mockLogger.Object,
-            _mockDateTimeProvider.Object);
+            _mockDateTimeProvider.Object,
+            _mockCacheService.Object);
     }
 
     #region GetAllOrdersAsync Tests
@@ -603,6 +609,62 @@ public class OrderServiceTests
         result.TotalCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task CreateOrderFromCartAsync_AfterCommit_InvalidatesCacheForEachBook()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderCreateDto = new OrderCreateDto { ShippingAddress = "123 Main St", PaymentMethod = "Credit Card" };
+
+        var book1 = new Book { Id = 1, Price = 29.99m, QuantityInStock = 10 };
+        var book2 = new Book { Id = 2, Price = 39.99m, QuantityInStock = 5 };
+
+        var cart = new Cart
+        {
+            Id = 1,
+            UserId = userId,
+            CartItems = new List<CartItem>
+            {
+                new() { CartId = 1, BookId = 1, Quantity = 2, PriceAtAdd = 29.99m, Book = book1 },
+                new() { CartId = 1, BookId = 2, Quantity = 1, PriceAtAdd = 39.99m, Book = book2 }
+            }
+        };
+
+        var createdOrder = new Order
+        {
+            Id = 1, UserId = userId, OrderNumber = "ORD-20250104-123456",
+            OrderItems = new List<OrderItem>()
+        };
+
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cart);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book1, book2 });
+        _mockOrderRepository.Setup(x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderItemRepository.Setup(x => x.AddAsync(It.IsAny<OrderItem>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockOrderRepository
+            .Setup(x => x.GetOrderWithDetailsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(createdOrder);
+        _mockMapper.Setup(x => x.Map<OrderReadDto>(createdOrder)).Returns(new OrderReadDto());
+        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.CreateOrderFromCartAsync(userId, orderCreateDto, CancellationToken.None);
+
+        // Assert — one eviction per book, keyed correctly, after commit
+        _mockCacheService.Verify(
+            x => x.RemoveAsync(CacheKeys.Book(1), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheService.Verify(
+            x => x.RemoveAsync(CacheKeys.Book(2), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region GetOrderByIdAsync Tests
@@ -940,7 +1002,48 @@ public class OrderServiceTests
         _mockBookRepository.Verify(x => x.Update(book1), Times.Once);
         _mockBookRepository.Verify(x => x.Update(book2), Times.Once);
     }
+    
+    [Fact]
+    public async Task CancelOrderAsync_AfterCommit_InvalidatesCacheForEachRestoredBook()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var orderId = 1;
 
+        var book1 = new Book { Id = 1, QuantityInStock = 5 };
+        var book2 = new Book { Id = 2, QuantityInStock = 10 };
+
+        var order = new Order
+        {
+            Id = orderId,
+            UserId = userId,
+            Status = OrderStatus.Pending,
+            OrderItems = new List<OrderItem>
+            {
+                new() { BookId = 1, Quantity = 2, Book = book1 },
+                new() { BookId = 2, Quantity = 3, Book = book2 }
+            }
+        };
+
+        _mockOrderRepository
+            .Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book> { book1, book2 });
+        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.CancelOrderAsync(userId, orderId, CancellationToken.None);
+
+        // Assert — one eviction per restored book, keyed correctly, after commit
+        _mockCacheService.Verify(
+            x => x.RemoveAsync(CacheKeys.Book(1), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCacheService.Verify(
+            x => x.RemoveAsync(CacheKeys.Book(2), It.IsAny<CancellationToken>()), Times.Once);
+    }
     #endregion
 
     #region UpdateOrderStatusAsync Tests
