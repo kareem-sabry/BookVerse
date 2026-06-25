@@ -115,10 +115,10 @@ public class PaymentService : IPaymentService
     public async Task HandleWebhookAsync(string json, string stripeSignature,
         CancellationToken cancellationToken = default)
     {
-        Event stripeEvent;
+        ParsedStripeEvent parsedEvent;
         try
         {
-            stripeEvent = _webhookConstructor.ConstructEvent(
+            parsedEvent = _webhookConstructor.ConstructEvent(
                 json, stripeSignature, _stripeOptions.WebhookSecret);
         }
         catch (StripeException ex)
@@ -127,22 +127,21 @@ public class PaymentService : IPaymentService
             throw new ValidationException(ErrorMessages.StripeWebhookSignatureInvalid);
         }
 
-        if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
+        if (parsedEvent.EventType == EventTypes.PaymentIntentSucceeded)
         {
-            var paymentIntent = stripeEvent.Data.Object as Stripe.PaymentIntent;
-            if (paymentIntent == null)
+            if (parsedEvent.PaymentIntentId == null)
             {
                 _logger.LogWarning("PaymentIntentSucceeded event received but PaymentIntent object was null");
                 return;
             }
 
-            _logger.LogInformation("PaymentIntent succeeded: {PaymentIntentId}", paymentIntent.Id);
+            _logger.LogInformation("PaymentIntent succeeded: {PaymentIntentId}", parsedEvent.PaymentIntentId);
 
-            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(paymentIntent.Id,
+            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
                 cancellationToken);
             if (order == null)
             {
-                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
+                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", parsedEvent.PaymentIntentId);
                 return;
             }
 
@@ -165,19 +164,19 @@ public class PaymentService : IPaymentService
 
             _logger.LogInformation("Order {OrderNumber} updated to Completed/Processing", order.OrderNumber);
         }
-        else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
+        else if (parsedEvent.EventType == EventTypes.PaymentIntentPaymentFailed)
         {
-            var paymentIntent = stripeEvent.Data.Object as Stripe.PaymentIntent;
-            if (paymentIntent == null)
+            if (parsedEvent.PaymentIntentId == null)
             {
                 _logger.LogWarning("PaymentIntentPaymentFailed event received but PaymentIntent object was null");
                 return;
             }
 
-            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(paymentIntent.Id, cancellationToken);
+            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
+                cancellationToken);
             if (order == null)
             {
-                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", paymentIntent.Id);
+                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", parsedEvent.PaymentIntentId);
                 return;
             }
 

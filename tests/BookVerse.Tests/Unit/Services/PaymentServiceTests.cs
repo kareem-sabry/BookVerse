@@ -1,4 +1,5 @@
-﻿using BookVerse.Application.Interfaces;
+﻿using BookVerse.Application.Dtos.Payment;
+using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
@@ -128,18 +129,11 @@ public class PaymentServiceTests
 
     #region HandleWebhookAsync — Idempotency Tests
 
-    private static Event BuildFakeEvent(string eventType, string paymentIntentId)
+    private static ParsedStripeEvent BuildFakeEvent(string eventType, string? paymentIntentId)
     {
-        var paymentIntent = new PaymentIntent
-        {
-            Id = paymentIntentId
-        };
-
-        return new Event
-        {
-            Type = eventType,
-            Data = new EventData { Object = paymentIntent }
-        };
+        return new ParsedStripeEvent
+        (eventType,
+            paymentIntentId);
     }
 
     [Fact]

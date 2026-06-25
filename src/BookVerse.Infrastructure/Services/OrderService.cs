@@ -297,7 +297,8 @@ public class OrderService : IOrderService
     public async Task<BasicResponse> UpdateOrderStatusAsync(int orderId, OrderUpdateStatusDto updateDto,
         CancellationToken cancellationToken)
     {
-        var order = await _unitOfWork.Orders.GetOrderWithDetailsAsync(orderId, cancellationToken);
+        var order = await _unitOfWork.Orders.GetByIdAsync(orderId, cancellationToken);
+
         if (order == null)
         {
             _logger.LogWarning("Order not found: {OrderId}", orderId);
