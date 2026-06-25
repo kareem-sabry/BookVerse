@@ -2,7 +2,8 @@
 using BookVerse.Core.Entities;
 using BookVerse.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.Storage;
-
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 namespace BookVerse.Infrastructure.Data;
 
 public class UnitOfWork : IUnitOfWork
@@ -76,6 +77,12 @@ public class UnitOfWork : IUnitOfWork
             await _transaction.DisposeAsync();
             _transaction = null;
         }
+    }
+
+    public async Task<TResult> ExecuteInTransactionAsync<TResult>(Func<Task<TResult>> operation)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(operation);
     }
 
     public void Dispose()

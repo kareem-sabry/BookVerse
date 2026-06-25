@@ -40,74 +40,78 @@ public class CartService : ICartService
 
     public async Task<CartDto> AddToCartAsync(Guid userId, CartItemAdd cartItem, CancellationToken cancellationToken)
     {
-        await _unitOfWork.BeginTransactionAsync();
-
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
-        if (cart == null)
+        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            cart = new Cart
+            await _unitOfWork.BeginTransactionAsync();
+
+            var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
+            if (cart == null)
             {
-                UserId = userId
-            };
-            await _unitOfWork.Carts.AddAsync(cart, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Created new cart for user: {UserId}", userId);
-        }
+                cart = new Cart
+                {
+                    UserId = userId
+                };
+                await _unitOfWork.Carts.AddAsync(cart, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Created new cart for user: {UserId}", userId);
+            }
 
-        var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
-        if (book == null)
-        {
-            _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
-            await _unitOfWork.RollbackTransactionAsync();
-            throw new NotFoundException(ErrorMessages.BookNotFound);
-        }
+            var book = await _unitOfWork.Books.GetByIdAsync(cartItem.BookId, cancellationToken);
+            if (book == null)
+            {
+                _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw new NotFoundException(ErrorMessages.BookNotFound);
+            }
 
-        if (book.QuantityInStock < cartItem.Quantity)
-        {
-            _logger.LogWarning("Insufficient stock for book: {BookId}. Requested: {Requested}, Available: {Available}",
-                cartItem.BookId, cartItem.Quantity, book.QuantityInStock);
-            await _unitOfWork.RollbackTransactionAsync();
-            throw new ValidationException(ErrorMessages.InsufficientStock);
-        }
-
-        var existingCartItem = await _unitOfWork.Carts.GetCartItemAsync(cart.Id, book.Id, cancellationToken);
-        if (existingCartItem != null)
-        {
-            var newQuantity = existingCartItem.Quantity + cartItem.Quantity;
-            if (book.QuantityInStock < newQuantity)
+            if (book.QuantityInStock < cartItem.Quantity)
             {
                 _logger.LogWarning(
-                    "Insufficient stock for book: {BookId}. Requested total: {Requested}, Available: {Available}",
-                    cartItem.BookId, newQuantity, book.QuantityInStock);
+                    "Insufficient stock for book: {BookId}. Requested: {Requested}, Available: {Available}",
+                    cartItem.BookId, cartItem.Quantity, book.QuantityInStock);
                 await _unitOfWork.RollbackTransactionAsync();
                 throw new ValidationException(ErrorMessages.InsufficientStock);
             }
 
-            existingCartItem.Quantity = newQuantity;
-            existingCartItem.PriceAtAdd = book.Price;
-            _unitOfWork.Carts.UpdateCartItem(existingCartItem);
-            _logger.LogInformation("Updated cart item for book: {BookId}, new quantity: {Quantity}",
-                cartItem.BookId, newQuantity);
-        }
-        else
-        {
-            var newCartItem = new CartItem
+            var existingCartItem = await _unitOfWork.Carts.GetCartItemAsync(cart.Id, book.Id, cancellationToken);
+            if (existingCartItem != null)
             {
-                CartId = cart.Id,
-                BookId = cartItem.BookId,
-                Quantity = cartItem.Quantity,
-                PriceAtAdd = book.Price
-            };
-            await _unitOfWork.Carts.AddCartItemAsync(newCartItem, cancellationToken);
-            _logger.LogInformation("Added new cart item for book: {BookId}, quantity: {Quantity}",
-                cartItem.BookId, cartItem.Quantity);
-        }
+                var newQuantity = existingCartItem.Quantity + cartItem.Quantity;
+                if (book.QuantityInStock < newQuantity)
+                {
+                    _logger.LogWarning(
+                        "Insufficient stock for book: {BookId}. Requested total: {Requested}, Available: {Available}",
+                        cartItem.BookId, newQuantity, book.QuantityInStock);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw new ValidationException(ErrorMessages.InsufficientStock);
+                }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _unitOfWork.CommitTransactionAsync();
+                existingCartItem.Quantity = newQuantity;
+                existingCartItem.PriceAtAdd = book.Price;
+                _unitOfWork.Carts.UpdateCartItem(existingCartItem);
+                _logger.LogInformation("Updated cart item for book: {BookId}, new quantity: {Quantity}",
+                    cartItem.BookId, newQuantity);
+            }
+            else
+            {
+                var newCartItem = new CartItem
+                {
+                    CartId = cart.Id,
+                    BookId = cartItem.BookId,
+                    Quantity = cartItem.Quantity,
+                    PriceAtAdd = book.Price
+                };
+                await _unitOfWork.Carts.AddCartItemAsync(newCartItem, cancellationToken);
+                _logger.LogInformation("Added new cart item for book: {BookId}, quantity: {Quantity}",
+                    cartItem.BookId, cartItem.Quantity);
+            }
 
-        var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id, cancellationToken);
-        return _mapper.Map<CartDto>(updatedCart!);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.CommitTransactionAsync();
+
+            var updatedCart = await _unitOfWork.Carts.GetCartWithItemsAsync(cart.Id, cancellationToken);
+            return _mapper.Map<CartDto>(updatedCart!);
+        });
     }
 
     public async Task<CartDto?> UpdateCartItemAsync(Guid userId, int cartItemId, CartItemUpdate cartItemUpdate,
