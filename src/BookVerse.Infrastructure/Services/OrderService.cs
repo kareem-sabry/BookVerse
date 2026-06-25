@@ -16,6 +16,7 @@ namespace BookVerse.Infrastructure.Services;
 public class OrderService : IOrderService
 {
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ICacheService _cache;
     private readonly ILogger<OrderService> _logger;
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
@@ -24,12 +25,14 @@ public class OrderService : IOrderService
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ILogger<OrderService> logger,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        ICacheService cache)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
+        _cache = cache;
     }
 
     public async Task<OrderReadDto> CreateOrderFromCartAsync(Guid userId, OrderCreateDto orderCreateDto,
@@ -159,6 +162,7 @@ public class OrderService : IOrderService
         }
 
         await _unitOfWork.CommitTransactionAsync();
+        await Task.WhenAll(bookIds.Select(id => _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken)));
         _logger.LogInformation("Order created successfully: {OrderNumber} for user: {UserId}", order.OrderNumber,
             userId);
 
@@ -260,6 +264,9 @@ public class OrderService : IOrderService
             await _unitOfWork.RollbackTransactionAsync();
             throw;
         }
+
+        await Task.WhenAll(order.OrderItems.Select(oi =>
+            _cache.RemoveAsync(CacheKeys.Book(oi.BookId), cancellationToken)));
 
         _logger.LogInformation("Order cancelled successfully: {OrderId}", orderId);
 

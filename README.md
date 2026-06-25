@@ -8,7 +8,7 @@
 [![SQL Server](https://img.shields.io/badge/Database-SQL%20Server%202022-CC2927?logo=microsoftsqlserver)](https://www.microsoft.com/sql-server)
 [![Redis](https://img.shields.io/badge/Cache-Redis%207-DC382D?logo=redis)](https://redis.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-69%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
+[![Tests](https://img.shields.io/badge/Tests-71%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/)
 [![Stripe](https://img.shields.io/badge/Payments-Stripe-635BFF?logo=stripe)](https://stripe.com)
 
@@ -36,7 +36,7 @@
 | **📦 Orders** | Order creation from cart with atomic stock deduction, order-number collision retry, forward-only status transitions, cancellation with stock restoration |
 | **💳 Payments** | Stripe PaymentIntent flow, webhook signature verification, idempotent webhook handling (replayed events are safely ignored) |
 | **👤 Admin** | Paginated user management, role promotion/demotion, account deletion — with self-demotion/self-deletion guards |
-| **⚡ Caching & Performance** | Redis-backed distributed cache for single-book lookups (cache-aside, 5 min TTL, graceful fallback to DB on Redis failure), HTTP response caching for list endpoints (300s) |
+| **⚡ Caching & Performance** | Redis-backed distributed cache for single-book lookups (cache-aside, 5 min TTL, explicit eviction on stock mutations, graceful fallback to DB on Redis failure), HTTP response caching for list endpoints (300s) |
 | **🚦 API Versioning & Rate Limiting** | URL-segment + header-based API versioning (`/api/v1/...`), tiered rate limits (global, auth, public API) using .NET 8's built-in `RateLimiter` |
 | **🔒 Security** | ASP.NET Identity password hashing, CORS policies per environment, HTTPS + HSTS, security headers, parameterized EF Core queries, structured `ProblemDetails` error responses |
 | **🐳 Docker** | Multi-stage build, non-root container user, health checks for API/DB/Redis, single `docker-compose.yml` for both dev and prod (environment-driven) |
@@ -95,6 +95,7 @@
 - **Optimistic concurrency on `Book`** — `RowVersion` is a SQL Server rowversion column. If two checkouts race on the same book's stock, EF raises `DbUpdateConcurrencyException`; `OrderService` catches it, re-reads fresh stock, and either confirms the order is still valid or throws a retriable `ConflictException`.
 - **Order-number collision retry** — `OrderService` catches the SQL unique-constraint violation (error 2627/2601) on the generated `OrderNumber`, rolls back, and retries once with a freshly generated number rather than failing the checkout outright.
 - **Idempotent Stripe webhooks** — before applying a webhook event, `PaymentService` checks whether the order's `PaymentStatus` is already `Completed`/`Failed` and no-ops if so, so Stripe's at-least-once delivery can't double-apply side effects.
+- **Cache eviction on stock mutations** — `OrderService` calls `ICacheService.RemoveAsync(CacheKeys.Book(id))` for every book whose `QuantityInStock` changes, immediately after `CommitTransactionAsync` in both `CreateOrderFromCartAsync` and `CancelOrderAsync`. Evictions run concurrently via `Task.WhenAll`. Without this, the 5-minute cache-aside TTL on `GetByIdAsync` would serve stale `QuantityInStock` values after every purchase or cancellation — including showing a sold-out book as in-stock.
 - **Forward-only state machines** — both `OrderStatus` and `PaymentStatus` transitions are enforced through explicit allow-lists (e.g. `Pending → Processing → Shipped → Delivered`, cancellation only from `Pending`/`Processing`; payment `Pending → Completed/Failed`, `Completed → Refunded`). Any other transition throws.
 - **Centralized audit trail** — `CreatedAtUtc` / `UpdatedAtUtc` / `CreatedBy` / `UpdatedBy` are stamped exclusively inside `AppDbContext.SaveChangesAsync` via change-tracker interception. `CreatedAtUtc`/`CreatedBy` are explicitly locked from being overwritten on update — services never set these fields themselves.
 - **Stripe.net isolated to Infrastructure** — `Core` has zero Stripe (or any external) dependency; only `Infrastructure`/`Application` reference `Stripe.net`.
@@ -439,16 +440,16 @@ Indexed columns include `Order.OrderNumber` (unique), `Order.UserId`, `Order.Ord
 
 ## 🧪 Testing
 
-**69 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
+**71 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
 
-| Service | Tests |
-|---|---|
-| `AccountServiceTests` | 11 |
-| `BooksServiceTests` | 12 |
-| `CartServiceTests` | 16 |
-| `OrderServiceTests` | 24 |
-| `PaymentServiceTests` | 6 |
-| **Total** | **69** |
+| Service | Tests  |
+|---|--------|
+| `AccountServiceTests` | 11     |
+| `BooksServiceTests` | 12     |
+| `CartServiceTests` | 16     |
+| `OrderServiceTests` | 26     |
+| `PaymentServiceTests` | 6      |
+| **Total** | **71** |
 
 ### Run Tests
 
