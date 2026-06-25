@@ -24,7 +24,7 @@ Feature requests are welcome! Please:
 1. **Fork the repository**
 2. **Create a feature branch**
    ```bash
-   git checkout -b feature/YourFeatureName
+   git checkout -b feat/YourFeatureName
    ```
 3. **Make your changes**
     - Follow the existing code style
@@ -36,7 +36,7 @@ Feature requests are welcome! Please:
    ```
 5. **Push to your fork**
    ```bash
-   git push origin feature/YourFeatureName
+   git push origin feat/YourFeatureName
    ```
 6. **Open a Pull Request**
 

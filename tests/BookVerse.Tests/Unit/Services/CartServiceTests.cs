@@ -37,6 +37,8 @@ public class CartServiceTests
         // Setup UnitOfWork to return mocked repositories
         _mockUnitOfWork.Setup(x => x.Carts).Returns(_mockCartRepository.Object);
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
+        _mockUnitOfWork.Setup(x => x.ExecuteInTransactionAsync(It.IsAny<Func<Task<CartDto>>>()))
+            .Returns((Func<Task<CartDto>> op) => op());
 
         _sut = new CartService(
             _mockUnitOfWork.Object,

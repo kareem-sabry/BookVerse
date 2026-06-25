@@ -35,7 +35,16 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.MigrationsAssembly("BookVerse.Infrastructure"))
+        sqlOptions =>
+        {
+            // Automatically retries on transient SQL Server errors:
+            // connection drops, brief timeouts, and
+            // transient resource limits.
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 3,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorNumbersToAdd: null);
+        })
 );
 
 // ====================================

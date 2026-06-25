@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using AutoMapper;
 using BookVerse.Application.Dtos.Order;
+using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
@@ -47,6 +48,11 @@ public class OrderServiceTests
         _mockUnitOfWork.Setup(x => x.Carts).Returns(_mockCartRepository.Object);
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
         _mockUnitOfWork.Setup(x => x.OrderItems).Returns(_mockOrderItemRepository.Object);
+        _mockUnitOfWork.Setup(x => x.ExecuteInTransactionAsync(It.IsAny<Func<Task<OrderReadDto>>>()))
+            .Returns((Func<Task<OrderReadDto>> op) => op());
+        _mockUnitOfWork.Setup(x => x.ExecuteInTransactionAsync(It.IsAny<Func<Task<BasicResponse>>>()))
+            .Returns((Func<Task<BasicResponse>> op) => op());
+
         _mockCacheService
             .Setup(x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);

@@ -38,150 +38,154 @@ public class OrderService : IOrderService
     public async Task<OrderReadDto> CreateOrderFromCartAsync(Guid userId, OrderCreateDto orderCreateDto,
         CancellationToken cancellationToken)
     {
-        await _unitOfWork.BeginTransactionAsync();
-
-        // Get user's cart
-        var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
-        if (cart == null || !cart.CartItems.Any())
+        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            _logger.LogWarning("Attempted to create order with empty cart for user: {UserId}", userId);
-            await _unitOfWork.RollbackTransactionAsync();
-            throw new ValidationException(ErrorMessages.EmptyCart);
-        }
-
-        // Single bulk fetch of all books needed for this order.
-        // Used for both stock validation and stock deduction — eliminates N+1.
-        var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
-        var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
-            .ToDictionary(b => b.Id);
-
-        // Validate stock availability for all items before creating anything
-        foreach (var cartItem in cart.CartItems)
-        {
-            if (!books.TryGetValue(cartItem.BookId, out var book))
-            {
-                _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
-                await _unitOfWork.RollbackTransactionAsync();
-                throw new NotFoundException($"Book with ID {cartItem.BookId} not found");
-            }
-
-            if (book.QuantityInStock < cartItem.Quantity)
-            {
-                _logger.LogWarning(
-                    "Insufficient stock for book: {BookId}. Requested: {Requested}, Available: {Available}",
-                    cartItem.BookId, cartItem.Quantity, book.QuantityInStock);
-                await _unitOfWork.RollbackTransactionAsync();
-                throw new ValidationException($"Insufficient stock for book: {book.Title}");
-            }
-        }
-
-        var totalAmount =
-            cart.CartItems.Sum(ci => books.TryGetValue(ci.BookId, out var b) ? b.Price * ci.Quantity : 0m);
-
-        // Create order
-        var order = new Order
-        {
-            UserId = userId,
-            OrderNumber = GenerateOrderNumber(),
-            OrderDate = _dateTimeProvider.UtcNow,
-            Status = OrderStatus.Pending,
-            ShippingAddress = orderCreateDto.ShippingAddress,
-            PaymentMethod = orderCreateDto.PaymentMethod,
-            PaymentStatus = PaymentStatus.Pending,
-            Notes = orderCreateDto.Notes,
-            TotalAmount = totalAmount
-        };
-
-        await _unitOfWork.Orders.AddAsync(order, cancellationToken);
-        try
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex)
-            when (ex.InnerException is SqlException { Number: 2627 or 2601 })
-        {
-            // 2627 = unique key / PK violation, 2601 = duplicate key in unique index
-            _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — rolling back and retrying",
-                order.OrderNumber);
-            await _unitOfWork.RollbackTransactionAsync();
             await _unitOfWork.BeginTransactionAsync();
 
-            order = new Order
+            // Get user's cart
+            var cart = await _unitOfWork.Carts.GetUserCartAsync(userId, cancellationToken);
+            if (cart == null || !cart.CartItems.Any())
             {
-                UserId = order.UserId,
+                _logger.LogWarning("Attempted to create order with empty cart for user: {UserId}", userId);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw new ValidationException(ErrorMessages.EmptyCart);
+            }
+
+            // Single bulk fetch of all books needed for this order.
+            // Used for both stock validation and stock deduction — eliminates N+1.
+            var bookIds = cart.CartItems.Select(ci => ci.BookId).ToList();
+            var books = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+                .ToDictionary(b => b.Id);
+
+            // Validate stock availability for all items before creating anything
+            foreach (var cartItem in cart.CartItems)
+            {
+                if (!books.TryGetValue(cartItem.BookId, out var book))
+                {
+                    _logger.LogWarning("Book not found: {BookId}", cartItem.BookId);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw new NotFoundException($"Book with ID {cartItem.BookId} not found");
+                }
+
+                if (book.QuantityInStock < cartItem.Quantity)
+                {
+                    _logger.LogWarning(
+                        "Insufficient stock for book: {BookId}. Requested: {Requested}, Available: {Available}",
+                        cartItem.BookId, cartItem.Quantity, book.QuantityInStock);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw new ValidationException($"Insufficient stock for book: {book.Title}");
+                }
+            }
+
+            var totalAmount =
+                cart.CartItems.Sum(ci => books.TryGetValue(ci.BookId, out var b) ? b.Price * ci.Quantity : 0m);
+
+            // Create order
+            var order = new Order
+            {
+                UserId = userId,
                 OrderNumber = GenerateOrderNumber(),
-                OrderDate = order.OrderDate,
-                Status = order.Status,
-                ShippingAddress = order.ShippingAddress,
-                PaymentMethod = order.PaymentMethod,
-                PaymentStatus = order.PaymentStatus,
-                Notes = order.Notes,
-                TotalAmount = order.TotalAmount
+                OrderDate = _dateTimeProvider.UtcNow,
+                Status = OrderStatus.Pending,
+                ShippingAddress = orderCreateDto.ShippingAddress,
+                PaymentMethod = orderCreateDto.PaymentMethod,
+                PaymentStatus = PaymentStatus.Pending,
+                Notes = orderCreateDto.Notes,
+                TotalAmount = totalAmount
             };
 
             await _unitOfWork.Orders.AddAsync(order, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-
-        // Create order items and deduct stock using the same bulk-fetched dictionary
-        foreach (var cartItem in cart.CartItems)
-        {
-            var currentPrice = books[cartItem.BookId].Price;
-
-            var orderItem = new OrderItem
+            try
             {
-                OrderId = order.Id,
-                BookId = cartItem.BookId,
-                Quantity = cartItem.Quantity,
-                PriceAtOrder = currentPrice
-            };
-
-            await _unitOfWork.OrderItems.AddAsync(orderItem, cancellationToken);
-
-            if (books.TryGetValue(cartItem.BookId, out var book))
-            {
-                book.QuantityInStock -= cartItem.Quantity;
-                _unitOfWork.Books.Update(book);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
-        }
+            catch (DbUpdateException ex)
+                when (ex.InnerException is SqlException { Number: 2627 or 2601 })
+            {
+                // 2627 = unique key / PK violation, 2601 = duplicate key in unique index
+                _logger.LogWarning("OrderNumber collision detected for {OrderNumber} — rolling back and retrying",
+                    order.OrderNumber);
+                await _unitOfWork.RollbackTransactionAsync();
+                await _unitOfWork.BeginTransactionAsync();
 
-        // Clear the cart
-        await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
+                order = new Order
+                {
+                    UserId = order.UserId,
+                    OrderNumber = GenerateOrderNumber(),
+                    OrderDate = order.OrderDate,
+                    Status = order.Status,
+                    ShippingAddress = order.ShippingAddress,
+                    PaymentMethod = order.PaymentMethod,
+                    PaymentStatus = order.PaymentStatus,
+                    Notes = order.Notes,
+                    TotalAmount = order.TotalAmount
+                };
 
-        try
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            // Rowversion conflict — another transaction modified a book between our read and write.
-            // Re-fetch fresh stock data to determine the actual cause before surfacing an error.
-            _logger.LogWarning(ex, "Rowversion conflict during stock deduction for user {UserId} — revalidating stock",
-                userId);
-            await _unitOfWork.RollbackTransactionAsync();
+                await _unitOfWork.Orders.AddAsync(order, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
 
-            var freshBooks = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
-                .ToDictionary(b => b.Id);
-
+            // Create order items and deduct stock using the same bulk-fetched dictionary
             foreach (var cartItem in cart.CartItems)
             {
-                if (!freshBooks.TryGetValue(cartItem.BookId, out var book) ||
-                    book.QuantityInStock < cartItem.Quantity)
-                    throw new ValidationException(ErrorMessages.InsufficientStock);
+                var currentPrice = books[cartItem.BookId].Price;
+
+                var orderItem = new OrderItem
+                {
+                    OrderId = order.Id,
+                    BookId = cartItem.BookId,
+                    Quantity = cartItem.Quantity,
+                    PriceAtOrder = currentPrice
+                };
+
+                await _unitOfWork.OrderItems.AddAsync(orderItem, cancellationToken);
+
+                if (books.TryGetValue(cartItem.BookId, out var book))
+                {
+                    book.QuantityInStock -= cartItem.Quantity;
+                    _unitOfWork.Books.Update(book);
+                }
             }
 
-            // Stock is still sufficient — conflict was transient; surface as retriable
-            throw new ConflictException("Order could not be placed due to concurrent activity. Please try again.");
-        }
+            // Clear the cart
+            await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
 
-        await _unitOfWork.CommitTransactionAsync();
-        await Task.WhenAll(bookIds.Select(id => _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken)));
-        _logger.LogInformation("Order created successfully: {OrderNumber} for user: {UserId}", order.OrderNumber,
-            userId);
+            try
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Rowversion conflict — another transaction modified a book between our read and write.
+                // Re-fetch fresh stock data to determine the actual cause before surfacing an error.
+                _logger.LogWarning(ex,
+                    "Rowversion conflict during stock deduction for user {UserId} — revalidating stock",
+                    userId);
+                await _unitOfWork.RollbackTransactionAsync();
 
-        // Retrieve the complete order with details
-        var createdOrder = await _unitOfWork.Orders.GetOrderWithDetailsAsync(order.Id, cancellationToken);
-        return _mapper.Map<OrderReadDto>(createdOrder!);
+                var freshBooks = (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+                    .ToDictionary(b => b.Id);
+
+                foreach (var cartItem in cart.CartItems)
+                {
+                    if (!freshBooks.TryGetValue(cartItem.BookId, out var book) ||
+                        book.QuantityInStock < cartItem.Quantity)
+                        throw new ValidationException(ErrorMessages.InsufficientStock);
+                }
+
+                // Stock is still sufficient — conflict was transient; surface as retriable
+                throw new ConflictException("Order could not be placed due to concurrent activity. Please try again.");
+            }
+
+            await _unitOfWork.CommitTransactionAsync();
+            await Task.WhenAll(bookIds.Select(id => _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken)));
+            _logger.LogInformation("Order created successfully: {OrderNumber} for user: {UserId}", order.OrderNumber,
+                userId);
+
+            // Retrieve the complete order with details
+            var createdOrder = await _unitOfWork.Orders.GetOrderWithDetailsAsync(order.Id, cancellationToken);
+            return _mapper.Map<OrderReadDto>(createdOrder!);
+        });
     }
 
     public async Task<PagedResult<OrderListDto>> GetUserOrdersAsync(Guid userId, QueryParameters parameters,
@@ -232,56 +236,63 @@ public class OrderService : IOrderService
     public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
         List<int> bookIds = [];
-
-        await _unitOfWork.BeginTransactionAsync();
-        try
+        var earlyResult = await _unitOfWork.ExecuteInTransactionAsync<BasicResponse?>(async () =>
         {
-            // Read inside the transaction so the status check and the update
-            // are in the same DB scope — closes the TOCTOU window.
-            var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
-            if (order == null)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
-                await _unitOfWork.RollbackTransactionAsync();
-                throw new NotFoundException(ErrorMessages.OrderNotFound);
-            }
-
-            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Processing)
-            {
-                _logger.LogWarning("Cannot cancel order {OrderId} with status: {Status}", orderId, order.Status);
-                await _unitOfWork.RollbackTransactionAsync();
-                return new BasicResponse
+                // Read inside the transaction so the status check and the update
+                // are in the same DB scope — closes the TOCTOU window.
+                var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
+                if (order == null)
                 {
-                    Succeeded = false,
-                    Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
-                };
-            }
-
-            order.Status = OrderStatus.Cancelled;
-            _unitOfWork.Orders.Update(order);
-
-            bookIds = order.OrderItems.Select(oi => oi.BookId).ToList();
-            var booksToRestore =
-                (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
-                .ToDictionary(b => b.Id);
-
-            foreach (var orderItem in order.OrderItems)
-            {
-                if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
-                {
-                    book.QuantityInStock += orderItem.Quantity;
-                    _unitOfWork.Books.Update(book);
+                    _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw new NotFoundException(ErrorMessages.OrderNotFound);
                 }
-            }
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            await _unitOfWork.CommitTransactionAsync();
-        }
-        catch (Exception ex) when (ex is not NotFoundException)
+                if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Processing)
+                {
+                    _logger.LogWarning("Cannot cancel order {OrderId} with status: {Status}", orderId, order.Status);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return new BasicResponse
+                    {
+                        Succeeded = false,
+                        Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
+                    };
+                }
+
+                order.Status = OrderStatus.Cancelled;
+                _unitOfWork.Orders.Update(order);
+
+                bookIds = order.OrderItems.Select(oi => oi.BookId).ToList();
+                var booksToRestore =
+                    (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+                    .ToDictionary(b => b.Id);
+
+                foreach (var orderItem in order.OrderItems)
+                {
+                    if (booksToRestore.TryGetValue(orderItem.BookId, out var book))
+                    {
+                        book.QuantityInStock += orderItem.Quantity;
+                        _unitOfWork.Books.Update(book);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.CommitTransactionAsync();
+                return null;
+            }
+            catch (Exception ex) when (ex is not NotFoundException)
+            {
+                _logger.LogError(ex, "Failed to cancel order {OrderId} for user {UserId}", orderId, userId);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        });
+        if (earlyResult != null)
         {
-            _logger.LogError(ex, "Failed to cancel order {OrderId} for user {UserId}", orderId, userId);
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
+            return earlyResult;
         }
 
         // Cache invalidation lives outside the DB try-catch intentionally —
