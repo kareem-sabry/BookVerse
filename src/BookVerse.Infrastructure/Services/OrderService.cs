@@ -118,7 +118,7 @@ public class OrderService : IOrderService
                 Notes = order.Notes,
                 TotalAmount = order.TotalAmount
             };
-            
+
             await _unitOfWork.Orders.AddAsync(order, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
@@ -231,32 +231,38 @@ public class OrderService : IOrderService
 
     public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
-        var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
-        if (order == null)
-        {
-            _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
-            throw new NotFoundException(ErrorMessages.OrderNotFound);
-        }
-
-        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Processing)
-        {
-            _logger.LogWarning("Cannot cancel order {OrderId} with status: {Status}", orderId, order.Status);
-            return new BasicResponse
-            {
-                Succeeded = false,
-                Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
-            };
-        }
+        List<int> bookIds = [];
 
         await _unitOfWork.BeginTransactionAsync();
         try
         {
+            // Read inside the transaction so the status check and the update
+            // are in the same DB scope — closes the TOCTOU window.
+            var order = await _unitOfWork.Orders.GetUserOrderByIdAsync(userId, orderId, cancellationToken);
+            if (order == null)
+            {
+                _logger.LogWarning("Order not found: {OrderId} for user: {UserId}", orderId, userId);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw new NotFoundException(ErrorMessages.OrderNotFound);
+            }
+
+            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Processing)
+            {
+                _logger.LogWarning("Cannot cancel order {OrderId} with status: {Status}", orderId, order.Status);
+                await _unitOfWork.RollbackTransactionAsync();
+                return new BasicResponse
+                {
+                    Succeeded = false,
+                    Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
+                };
+            }
+
             order.Status = OrderStatus.Cancelled;
             _unitOfWork.Orders.Update(order);
 
-            var bookIdsToRestore = order.OrderItems.Select(oi => oi.BookId).ToList();
+            bookIds = order.OrderItems.Select(oi => oi.BookId).ToList();
             var booksToRestore =
-                (await _unitOfWork.Books.FindAsync(b => bookIdsToRestore.Contains(b.Id), cancellationToken))
+                (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
                 .ToDictionary(b => b.Id);
 
             foreach (var orderItem in order.OrderItems)
@@ -271,23 +277,21 @@ public class OrderService : IOrderService
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not NotFoundException)
         {
             _logger.LogError(ex, "Failed to cancel order {OrderId} for user {UserId}", orderId, userId);
             await _unitOfWork.RollbackTransactionAsync();
             throw;
         }
 
-        await Task.WhenAll(order.OrderItems.Select(oi =>
-            _cache.RemoveAsync(CacheKeys.Book(oi.BookId), cancellationToken)));
+        // Cache invalidation lives outside the DB try-catch intentionally —
+        // a cache failure must never trigger a rollback on already-committed data.
+        // After CommitTransactionAsync, _transaction is null so RollbackAsync is a no-op anyway.
+        await Task.WhenAll(bookIds.Select(id => _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken)));
 
         _logger.LogInformation("Order cancelled successfully: {OrderId}", orderId);
 
-        return new BasicResponse
-        {
-            Succeeded = true,
-            Message = SuccessMessages.OrderCancelled
-        };
+        return new BasicResponse { Succeeded = true, Message = SuccessMessages.OrderCancelled };
     }
 
     public async Task<BasicResponse> UpdateOrderStatusAsync(int orderId, OrderUpdateStatusDto updateDto,

@@ -10,10 +10,8 @@ public class User : IdentityUser<Guid>
     [Required] [MaxLength(100)] public required string LastName { get; set; }
 
 
-    [MaxLength(500)] 
-    public string? RefreshToken { get; set; }
-    [MaxLength(500)] 
-    public string? PreviousRefreshToken { get; set; }
+    [MaxLength(500)] public string? RefreshToken { get; set; }
+    [MaxLength(500)] public string? PreviousRefreshToken { get; set; }
     public DateTime? RefreshTokenExpiresAtUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }
