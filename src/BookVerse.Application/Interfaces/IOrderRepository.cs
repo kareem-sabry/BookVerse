@@ -16,4 +16,5 @@ public interface IOrderRepository : IGenericRepository<Order>
     Task<Order?> GetUserOrderByIdAsync(Guid userId, int orderId, CancellationToken cancellationToken = default);
     Task<bool> OrderExistsForUserAsync(Guid userId, int orderId, CancellationToken cancellationToken = default);
 
-    Task<Order?> GetByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default);}
+    Task<Order?> GetByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default);
+}

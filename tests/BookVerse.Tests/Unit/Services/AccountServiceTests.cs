@@ -428,7 +428,7 @@ public class AccountServiceTests
         result.Message.Should().Be(ErrorMessages.RefreshTokenExpired);
     }
 
-[Fact]
+    [Fact]
     public async Task RefreshTokenAsync_WithConsumedToken_RevokesAllTokensAndReturnsFailure()
     {
         // Arrange — simulate replaying an already-rotated refresh token (theft scenario)

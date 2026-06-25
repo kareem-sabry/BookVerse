@@ -208,10 +208,10 @@ public class BooksService : IBooksService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _unitOfWork.CommitTransactionAsync();
-        
+
         //Invalidate cache after update
         await _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken);
-        
+
         _logger.LogInformation("Updated book: {BookId}", id);
         return true;
     }
@@ -228,10 +228,10 @@ public class BooksService : IBooksService
 
         _unitOfWork.Books.Delete(book);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        
+
         // Invalidate cache so stale data is not retrieved.
         await _cache.RemoveAsync(CacheKeys.Book(id), cancellationToken);
-        
+
         _logger.LogInformation("Deleted book: {BookId}", id);
         return true;
     }

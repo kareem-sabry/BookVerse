@@ -108,7 +108,8 @@ public class CartServiceTests
         // Arrange
         var userId = Guid.NewGuid();
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
 
         // Act
         var result = await _sut.GetCartByUserIdAsync(userId, It.IsAny<CancellationToken>());
@@ -178,12 +179,17 @@ public class CartServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((Cart?)null);
-        _mockCartRepository.Setup(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
-        _mockCartRepository.Setup(x => x.GetCartItemAsync(It.IsAny<int>(), cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+        _mockCartRepository.Setup(x =>
+                x.GetCartItemAsync(It.IsAny<int>(), cartItemAdd.BookId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CartItem?)null);
-        _mockCartRepository.Setup(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _mockCartRepository
             .Setup(x => x.GetCartWithItemsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(updatedCart);
@@ -201,7 +207,8 @@ public class CartServiceTests
         result.CartItems[0].Quantity.Should().Be(2);
 
         _mockCartRepository.Verify(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Once);
-        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()),
+            Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(default), Times.Exactly(2));
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
@@ -267,12 +274,17 @@ public class CartServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(existingCart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
-        _mockCartRepository.Setup(x => x.GetCartItemAsync(existingCart.Id, cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingCart);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+        _mockCartRepository.Setup(x =>
+                x.GetCartItemAsync(existingCart.Id, cartItemAdd.BookId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CartItem?)null);
-        _mockCartRepository.Setup(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(existingCart.Id, It.IsAny<CancellationToken>())).ReturnsAsync(updatedCart);
+        _mockCartRepository.Setup(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(existingCart.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(updatedCart);
         _mockMapper.Setup(x => x.Map<CartDto>(updatedCart)).Returns(cartDto);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
@@ -286,7 +298,8 @@ public class CartServiceTests
         result.CartItems.Should().HaveCount(1);
 
         _mockCartRepository.Verify(x => x.AddAsync(It.IsAny<Cart>(), It.IsAny<CancellationToken>()), Times.Never);
-        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()),
+            Times.Once);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
 
@@ -360,11 +373,15 @@ public class CartServiceTests
             }
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(existingCart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
-        _mockCartRepository.Setup(x => x.GetCartItemAsync(existingCart.Id, cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingCart);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+        _mockCartRepository.Setup(x =>
+                x.GetCartItemAsync(existingCart.Id, cartItemAdd.BookId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingCartItem);
-        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(existingCart.Id, It.IsAny<CancellationToken>())).ReturnsAsync(updatedCart);
+        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(existingCart.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(updatedCart);
         _mockMapper.Setup(x => x.Map<CartDto>(updatedCart)).Returns(cartDto);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
@@ -378,7 +395,8 @@ public class CartServiceTests
         result.CartItems[0].Quantity.Should().Be(5);
 
         _mockCartRepository.Verify(x => x.UpdateCartItem(existingCartItem), Times.Once);
-        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockCartRepository.Verify(x => x.AddCartItemAsync(It.IsAny<CartItem>(), It.IsAny<CancellationToken>()),
+            Times.Never);
         _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Once);
     }
 
@@ -400,8 +418,10 @@ public class CartServiceTests
             CartItems = new List<CartItem>()
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(existingCart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>())).ReturnsAsync((Book?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingCart);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Book?)null);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
@@ -442,8 +462,10 @@ public class CartServiceTests
             CartItems = new List<CartItem>()
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(existingCart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingCart);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItemAdd.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
 
@@ -534,8 +556,10 @@ public class CartServiceTests
         };
 
         _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItem.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
-        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(cart.Id, It.IsAny<CancellationToken>())).ReturnsAsync(updatedCart);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItem.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
+        _mockCartRepository.Setup(x => x.GetCartWithItemsAsync(cart.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(updatedCart);
         _mockMapper.Setup(x => x.Map<CartDto>(updatedCart)).Returns(cartDto);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
 
@@ -561,7 +585,8 @@ public class CartServiceTests
             Quantity = 5
         };
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
 
         // Act
         var result = await _sut.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, It.IsAny<CancellationToken>());
@@ -640,10 +665,12 @@ public class CartServiceTests
         };
 
         _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
-        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItem.BookId, It.IsAny<CancellationToken>())).ReturnsAsync(book);
+        _mockBookRepository.Setup(x => x.GetByIdAsync(cartItem.BookId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(book);
 
         // Act
-        var act = async () => await _sut.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, It.IsAny<CancellationToken>());
+        var act = async () =>
+            await _sut.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, It.IsAny<CancellationToken>());
 
         // Assert
         await act.Should().ThrowAsync<ValidationException>()
@@ -702,7 +729,8 @@ public class CartServiceTests
         var userId = Guid.NewGuid();
         var cartItemId = 1;
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
 
         // Act
         var result = await _sut.RemoveCartItemAsync(userId, cartItemId, It.IsAny<CancellationToken>());
@@ -766,7 +794,8 @@ public class CartServiceTests
         };
 
         _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(cart);
-        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockCartRepository.Setup(x => x.ClearCartAsync(cart.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(1);
 
         // Act
@@ -787,7 +816,8 @@ public class CartServiceTests
         // Arrange
         var userId = Guid.NewGuid();
 
-        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((Cart?)null);
+        _mockCartRepository.Setup(x => x.GetUserCartAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cart?)null);
 
         // Act
         var result = await _sut.ClearCartAsync(userId, It.IsAny<CancellationToken>());

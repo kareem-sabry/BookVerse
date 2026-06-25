@@ -6,7 +6,9 @@ namespace BookVerse.Application.Interfaces;
 
 public interface IAccountService
 {
-    Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest, CancellationToken cancellationToken = default);
+    Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest,
+        CancellationToken cancellationToken = default);
+
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
 
     Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest refreshTokenRequest,
@@ -14,7 +16,10 @@ public interface IAccountService
 
     Task<LogoutResponse> LogoutAsync(string userEmail, CancellationToken cancellationToken = default);
     Task<UserProfileDto?> GetCurrentUserAsync(string userEmail, CancellationToken cancellationToken = default);
-    Task<BasicResponse> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default);
+
+    Task<BasicResponse> ForgotPasswordAsync(ForgotPasswordRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<BasicResponse> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default);
     Task<BasicResponse> DeleteMyAccountAsync(string userEmail, CancellationToken cancellationToken = default);
 }

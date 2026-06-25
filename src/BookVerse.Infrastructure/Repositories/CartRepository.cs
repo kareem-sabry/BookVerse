@@ -25,7 +25,8 @@ public class CartRepository : GenericRepository<Cart>, ICartRepository
 
     public async Task<CartItem?> GetCartItemAsync(int cartId, int bookId, CancellationToken cancellationToken)
     {
-        return await _context.CartItems.AsNoTracking().FirstOrDefaultAsync(ci => ci.CartId == cartId && ci.BookId == bookId,
+        return await _context.CartItems.AsNoTracking().FirstOrDefaultAsync(
+            ci => ci.CartId == cartId && ci.BookId == bookId,
             cancellationToken: cancellationToken);
     }
 
