@@ -1,8 +1,8 @@
-﻿using Stripe;
+﻿using BookVerse.Application.Dtos.Payment;
 
 namespace BookVerse.Application.Interfaces;
 
 public interface IStripeWebhookConstructor
 {
-    Event ConstructEvent(string json, string stripeSignature, string webhookSecret);
+    ParsedStripeEvent ConstructEvent(string json, string stripeSignature, string webhookSecret);
 }

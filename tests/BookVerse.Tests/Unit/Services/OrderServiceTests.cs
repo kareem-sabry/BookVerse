@@ -1087,7 +1087,7 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
@@ -1148,7 +1148,7 @@ public class OrderServiceTests
             OrderItems = new List<OrderItem>()
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
