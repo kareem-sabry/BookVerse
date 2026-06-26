@@ -54,6 +54,10 @@ public static class ErrorMessages
     public const string StripeWebhookEventParsingFailed = "Failed to parse Stripe webhook event.";
     public const string PaymentIntentAlreadyExists = "Payment intent already exists for this order.";
     public const string StripeRetrievalFailed = "Payment retrieval failed.";
+    public const string StripeRefundFailed = "Failed to process refund with Stripe.";
+
+    public const string OrderMissingPaymentIntent =
+        "Order does not have an associated payment intent and cannot be refunded.";
 
     public const string OrderNotInPendingPaymentStatus =
         "Payment can only be initiated for orders with pending payment status.";

@@ -17,6 +17,7 @@ public class OrderService : IOrderService
 {
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ICacheService _cache;
+    private readonly IStripeRefundService _stripeRefundService;
     private readonly ILogger<OrderService> _logger;
     private readonly IMapper _mapper;
     private readonly IUnitOfWork _unitOfWork;
@@ -26,13 +27,15 @@ public class OrderService : IOrderService
         IMapper mapper,
         ILogger<OrderService> logger,
         IDateTimeProvider dateTimeProvider,
-        ICacheService cache)
+        ICacheService cache,
+        IStripeRefundService stripeRefundService)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
         _cache = cache;
+        _stripeRefundService = stripeRefundService;
     }
 
     public async Task<OrderReadDto> CreateOrderFromCartAsync(Guid userId, OrderCreateDto orderCreateDto,
@@ -374,6 +377,33 @@ public class OrderService : IOrderService
         }
 
         var previousPaymentStatus = order.PaymentStatus;
+
+        // Call Stripe's Refund API before touching the db
+        // IF stripe rejects the refund the DB stays completed - no phantom read.
+
+        if (updateDto.PaymentStatus == PaymentStatus.Refunded)
+        {
+            if (string.IsNullOrEmpty(order.StripePaymentIntentId))
+            {
+                _logger.LogWarning(
+                    "Cannot refund order {OrderId}: no StripePaymentIntentId present", orderId);
+                throw new ValidationException(ErrorMessages.OrderMissingPaymentIntent);
+            }
+
+            try
+            {
+                await _stripeRefundService.RefundAsync(order.StripePaymentIntentId, cancellationToken);
+                _logger.LogInformation(
+                    "Stripe refund issued for order {OrderId}, PaymentIntent {Id}",
+                    orderId, order.StripePaymentIntentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Stripe refund failed for order {OrderId}", orderId);
+
+                throw new PaymentProcessingException(ErrorMessages.StripeRefundFailed);
+            }
+        }
 
         order.PaymentStatus = updateDto.PaymentStatus;
         _unitOfWork.Orders.Update(order);

@@ -1,4 +1,3 @@
-
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
@@ -18,6 +17,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Stripe;
@@ -322,10 +322,15 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+
+// payments
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddTransient<IStripePaymentIntentService, StripePaymentIntentService>();
 builder.Services.AddTransient<PaymentIntentService>();
 builder.Services.AddTransient<IStripeWebhookConstructor, StripeWebhookConstructor>();
+builder.Services.AddTransient<IStripeRefundService, StripeRefundService>();
+builder.Services.AddTransient<Stripe.RefundService>();
+
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
