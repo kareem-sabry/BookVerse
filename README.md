@@ -8,7 +8,7 @@
 [![SQL Server](https://img.shields.io/badge/Database-SQL%20Server%202022-CC2927?logo=microsoftsqlserver)](https://www.microsoft.com/sql-server)
 [![Redis](https://img.shields.io/badge/Cache-Redis%207-DC382D?logo=redis)](https://redis.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-71%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
+[![Tests](https://img.shields.io/badge/Tests-74%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/)
 [![Stripe](https://img.shields.io/badge/Payments-Stripe-635BFF?logo=stripe)](https://stripe.com)
 
@@ -440,16 +440,16 @@ Indexed columns include `Order.OrderNumber` (unique), `Order.UserId`, `Order.Ord
 
 ## 🧪 Testing
 
-**71 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
+**74 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
 
 | Service | Tests  |
 |---|--------|
 | `AccountServiceTests` | 11     |
 | `BooksServiceTests` | 12     |
 | `CartServiceTests` | 16     |
-| `OrderServiceTests` | 26     |
+| `OrderServiceTests` | 29     |
 | `PaymentServiceTests` | 6      |
-| **Total** | **71** |
+| **Total** | **74** |
 
 ### Run Tests
 
