@@ -1,3 +1,4 @@
+
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
@@ -11,6 +12,7 @@ using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Data;
 using BookVerse.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +30,14 @@ var builder = WebApplication.CreateBuilder(args);
 // ====================================
 if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
+
+// ====================================
+// DATA PROTECTION
+// ====================================
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/dataprotection-keys"))
+    .SetApplicationName("BookVerse");
+
 // ====================================
 // DATABASE
 // ====================================
@@ -37,9 +47,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlOptions =>
         {
-            // Automatically retries on transient SQL Server errors:
-            // connection drops, brief timeouts, and
-            // transient resource limits.
+            sqlOptions.MigrationsAssembly("BookVerse.Infrastructure");
             sqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 3,
                 maxRetryDelay: TimeSpan.FromSeconds(5),
@@ -398,21 +406,21 @@ using (var scope = app.Services.CreateScope())
 // ====================================
 
 // Configure the HTTP request pipeline.
+// Always register Swagger regardless of environment
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BookVerse API v1");
+    options.RoutePrefix = "docs"; // serves at /docs
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "BookVerse API v1");
-        options.RoutePrefix = string.Empty;
-    });
     app.UseCors("DevelopmentPolicy");
-    // GlobalExceptionHandler covers both environments; no UseDeveloperExceptionPage needed
 }
 else
 {
     app.UseCors("ProductionPolicy");
-    app.UseHsts();
 }
 
 app.UseExceptionHandler(opt => { });
@@ -424,12 +432,13 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'";
+    context.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:";
 
     await next();
 });
 
-app.UseHttpsRedirection();
+
 app.UseRateLimiter();
 app.UseResponseCaching();
 app.UseAuthentication();
