@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using AutoMapper;
 using BookVerse.Application.Dtos.Order;
+using BookVerse.Application.Dtos.Payment;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
@@ -12,6 +13,7 @@ using BookVerse.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Stripe;
 
 namespace BookVerse.Tests.Unit.Services;
 
@@ -27,6 +29,7 @@ public class OrderServiceTests
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly OrderService _sut;
     private readonly Mock<ICacheService> _mockCacheService;
+    private readonly Mock<IStripeRefundService> _mockStripeRefundService;
 
     public OrderServiceTests()
     {
@@ -39,7 +42,7 @@ public class OrderServiceTests
         _mockBookRepository = new Mock<IBookRepository>();
         _mockOrderItemRepository = new Mock<IGenericRepository<OrderItem>>();
         _mockCacheService = new Mock<ICacheService>();
-
+        _mockStripeRefundService = new Mock<IStripeRefundService>();
         // Default date for all tests
         _mockDateTimeProvider.Setup(x => x.UtcNow)
             .Returns(new DateTime(2025, 1, 4, 12, 0, 0, DateTimeKind.Utc));
@@ -62,7 +65,8 @@ public class OrderServiceTests
             _mockMapper.Object,
             _mockLogger.Object,
             _mockDateTimeProvider.Object,
-            _mockCacheService.Object);
+            _mockCacheService.Object,
+            _mockStripeRefundService.Object);
     }
 
     #region GetAllOrdersAsync Tests
@@ -1234,6 +1238,7 @@ public class OrderServiceTests
     {
         // Arrange
         var orderId = 1;
+        var paymentIntentId = "pi_test_existing";
         var updateDto = new PaymentUpdateStatusDto
         {
             PaymentStatus = PaymentStatus.Refunded
@@ -1242,19 +1247,120 @@ public class OrderServiceTests
         var order = new Order
         {
             Id = orderId,
-            PaymentStatus = PaymentStatus.Completed
+            PaymentStatus = PaymentStatus.Completed,
+            StripePaymentIntentId = paymentIntentId
         };
 
         _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
+        _mockStripeRefundService
+            .Setup(x => x.RefundAsync(paymentIntentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefundResult("re_test_123", "succeeded", 5000, "aed"));
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
+
         // Act
-        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, It.IsAny<CancellationToken>());
+        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, CancellationToken.None);
 
         // Assert
         result.Succeeded.Should().BeTrue();
         order.PaymentStatus.Should().Be(PaymentStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task UpdatePaymentStatusAsync_ToRefunded_CallsStripeRefundApi()
+    {
+        // Arrange
+        var orderId = 1;
+        var paymentIntentId = "pi_test_refund_123";
+        var updateDto = new PaymentUpdateStatusDto { PaymentStatus = PaymentStatus.Refunded };
+
+        var order = new Order
+        {
+            Id = orderId,
+            PaymentStatus = PaymentStatus.Completed,
+            StripePaymentIntentId = paymentIntentId
+        };
+
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _mockStripeRefundService
+            .Setup(x => x.RefundAsync(paymentIntentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefundResult("re_test_456", "succeeded", 5000, "aed"));
+        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Act
+        var result = await _sut.UpdatePaymentStatusAsync(orderId, updateDto, CancellationToken.None);
+
+        // Assert
+        result.Succeeded.Should().BeTrue();
+        order.PaymentStatus.Should().Be(PaymentStatus.Refunded);
+        _mockStripeRefundService.Verify(
+            x => x.RefundAsync(paymentIntentId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdatePaymentStatusAsync_ToRefunded_WhenNoStripePaymentIntentId_ThrowsValidationException()
+    {
+        // Arrange
+        var orderId = 1;
+        var updateDto = new PaymentUpdateStatusDto { PaymentStatus = PaymentStatus.Refunded };
+
+        var order = new Order
+        {
+            Id = orderId,
+            PaymentStatus = PaymentStatus.Completed,
+            StripePaymentIntentId = null // no payment intent on record
+        };
+
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+
+        // Act
+        var act = async () =>
+            await _sut.UpdatePaymentStatusAsync(orderId, updateDto, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage(ErrorMessages.OrderMissingPaymentIntent);
+
+        _mockStripeRefundService.Verify(
+            x => x.RefundAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdatePaymentStatusAsync_ToRefunded_WhenStripeFails_ThrowsPaymentProcessingException()
+    {
+        // Arrange
+        var orderId = 1;
+        var paymentIntentId = "pi_test_fail";
+        var updateDto = new PaymentUpdateStatusDto { PaymentStatus = PaymentStatus.Refunded };
+
+        var order = new Order
+        {
+            Id = orderId,
+            PaymentStatus = PaymentStatus.Completed,
+            StripePaymentIntentId = paymentIntentId
+        };
+
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _mockStripeRefundService
+            .Setup(x => x.RefundAsync(paymentIntentId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new StripeException("card_declined"));
+
+        // Act
+        var act = async () =>
+            await _sut.UpdatePaymentStatusAsync(orderId, updateDto, CancellationToken.None);
+
+        // Assert — Stripe failure must not write to the DB
+        await act.Should().ThrowAsync<PaymentProcessingException>()
+            .WithMessage(ErrorMessages.StripeRefundFailed);
+
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        order.PaymentStatus.Should().Be(PaymentStatus.Completed); // DB state unchanged
     }
 
     #endregion
