@@ -25,12 +25,15 @@ RUN dotnet publish BookVerse.Api.csproj -c Release -o /app/publish \
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+
+RUN adduser --disabled-password --gecos "" appuser \
+    && mkdir -p /app/dataprotection-keys \
+    && chown -R appuser /app
+    
 USER appuser
 
 COPY --from=publish /app/publish .
 
 EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
 
 ENTRYPOINT ["dotnet", "BookVerse.Api.dll"]
