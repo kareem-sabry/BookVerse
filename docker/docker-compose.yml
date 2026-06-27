@@ -28,6 +28,8 @@ services:
       - StripeOptions__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
       - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
       - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - DataProtection__KeysPath=/app/dataprotection-keys
+      - Cors__AllowedOrigin=${CORS_ALLOWED_ORIGIN:-https://bookverseapi.com}
       - EmailOptions__SmtpHost=${SMTP_HOST}
       - EmailOptions__SmtpPort=${SMTP_PORT}
       - EmailOptions__FromEmail=${FROM_EMAIL}
@@ -43,7 +45,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/health || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
