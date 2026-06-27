@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using Asp.Versioning;
+﻿using Asp.Versioning;
+using BookVerse.Api.Extensions;
 using BookVerse.Application.Dtos.Cart;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
@@ -29,16 +29,15 @@ public class CartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCart(CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var cart = await _cartService.GetCartByUserIdAsync(userId, cancellationToken);
+        var cart = await _cartService.GetCartByUserIdAsync(userId.Value, cancellationToken);
 
         if (cart == null)
             return NotFound(new BasicResponse
@@ -57,29 +56,15 @@ public class CartController : ControllerBase
     public async Task<IActionResult> AddToCart([FromBody] CartItemAdd cartItemAdd,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var cart = await _cartService.AddToCartAsync(userId, cartItemAdd, cancellationToken);
+        var cart = await _cartService.AddToCartAsync(userId.Value, cartItemAdd, cancellationToken);
         return Ok(cart);
     }
 
@@ -98,29 +83,15 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var cart = await _cartService.UpdateCartItemAsync(userId, cartItemId, cartItemUpdate, cancellationToken);
+        var cart = await _cartService.UpdateCartItemAsync(userId.Value, cartItemId, cartItemUpdate, cancellationToken);
 
         if (cart == null)
             return NotFound(new BasicResponse
@@ -146,16 +117,15 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _cartService.RemoveCartItemAsync(userId, cartItemId, cancellationToken);
+        var response = await _cartService.RemoveCartItemAsync(userId.Value, cartItemId, cancellationToken);
 
         if (response.Succeeded) return Ok(response);
 
@@ -167,16 +137,15 @@ public class CartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ClearCart(CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _cartService.ClearCartAsync(userId, cancellationToken);
+        var response = await _cartService.ClearCartAsync(userId.Value, cancellationToken);
         return Ok(response);
     }
 }

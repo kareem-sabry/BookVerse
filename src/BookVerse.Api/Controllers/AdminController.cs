@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Asp.Versioning;
+using BookVerse.Api.Extensions;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
@@ -22,16 +22,6 @@ public class AdminController : ControllerBase
         _adminService = adminService;
     }
 
-    /// <summary>
-    ///     Returns a paginated list of all registered users with their assigned roles.
-    ///     Accessible by administrators only.
-    /// </summary>
-    /// <param name="parameters">Pagination, sorting, and search parameters.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A paginated collection of users including their profile details and roles.</returns>
-    /// <response code="200">Users retrieved successfully.</response>
-    /// <response code="401">The request is missing or contains an invalid JWT.</response>
-    /// <response code="403">The authenticated user does not have the Admin role.</response>
     [HttpGet("users")]
     [ProducesResponseType(typeof(PagedResult<UserWithRolesDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -43,16 +33,6 @@ public class AdminController : ControllerBase
         return Ok(users);
     }
 
-    /// <summary>
-    ///     Returns a single user by their ID, including their assigned roles.
-    ///     Accessible by administrators only.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user to retrieve.</param>
-    /// <returns>The user's profile and role information.</returns>
-    /// <response code="200">User found and returned.</response>
-    /// <response code="401">The request is missing or contains an invalid JWT.</response>
-    /// <response code="403">The authenticated user does not have the Admin role.</response>
-    /// <response code="404">No user with the given ID was found.</response>
     [HttpGet("users/{userId:guid}")]
     [ProducesResponseType(typeof(UserWithRolesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -70,17 +50,6 @@ public class AdminController : ControllerBase
         return Ok(user);
     }
 
-    /// <summary>
-    ///     Grants the Admin role to the specified user.
-    ///     The requesting administrator cannot promote themselves.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user to promote.</param>
-    /// <returns>A response indicating whether the role was assigned successfully.</returns>
-    /// <response code="200">Admin role granted successfully.</response>
-    /// <response code="400">The operation failed (e.g. user already has the Admin role).</response>
-    /// <response code="401">The request is missing or contains an invalid JWT.</response>
-    /// <response code="403">The authenticated user does not have the Admin role.</response>
-    /// <response code="404">No user with the given ID was found.</response>
     [HttpPost("users/{userId:guid}/make-admin")]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
@@ -89,9 +58,8 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> MakeUserAdmin(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
-
-        if (string.IsNullOrWhiteSpace(currentAdminEmail))
+        var currentAdminEmail = User.GetUserEmail();
+        if (currentAdminEmail == null)
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
 
         var response = await _adminService.MakeUserAdminAsync(userId, currentAdminEmail);
@@ -100,17 +68,6 @@ public class AdminController : ControllerBase
         return Ok(response);
     }
 
-    /// <summary>
-    ///     Revokes the Admin role from the specified user.
-    ///     An administrator cannot remove their own Admin role.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user whose Admin role should be removed.</param>
-    /// <returns>A response indicating whether the role was removed successfully.</returns>
-    /// <response code="200">Admin role removed successfully.</response>
-    /// <response code="400">The operation failed (e.g. attempting to demote yourself).</response>
-    /// <response code="401">The request is missing or contains an invalid JWT.</response>
-    /// <response code="403">The authenticated user does not have the Admin role.</response>
-    /// <response code="404">No user with the given ID was found.</response>
     [HttpPost("users/{userId:guid}/remove-admin")]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
@@ -119,29 +76,16 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveAdminRole(Guid userId, CancellationToken cancellationToken = default)
     {
-        var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!Guid.TryParse(rawId, out var currentAdminId))
+        var currentAdminId = User.GetUserId();
+        if (currentAdminId == null)
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
 
-        var response = await _adminService.RemoveAdminRoleAsync(userId, currentAdminId);
+        var response = await _adminService.RemoveAdminRoleAsync(userId, currentAdminId.Value);
         if (!response.Succeeded)
             return BadRequest(response);
         return Ok(response);
     }
 
-    /// <summary>
-    ///     Permanently deletes a user account by ID.
-    ///     Administrators cannot delete their own account through this endpoint.
-    ///     This operation is irreversible.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user to delete.</param>
-    /// <returns>A response indicating whether the account was deleted successfully.</returns>
-    /// <response code="204">User account deleted successfully.</response>
-    /// <response code="400">The operation failed (e.g. attempting to delete yourself).</response>
-    /// <response code="401">The request is missing or contains an invalid JWT.</response>
-    /// <response code="403">The authenticated user does not have the Admin role.</response>
-    /// <response code="404">No user with the given ID was found.</response>
     [HttpDelete("users/{userId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
@@ -150,9 +94,8 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteUser(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentAdminEmail = User.FindFirstValue(ClaimTypes.Email)!;
-
-        if (string.IsNullOrWhiteSpace(currentAdminEmail))
+        var currentAdminEmail = User.GetUserEmail();
+        if (currentAdminEmail == null)
             return Unauthorized(new BasicResponse { Succeeded = false, Message = ErrorMessages.InvalidUserContext });
 
         var response = await _adminService.DeleteUserAsync(userId, currentAdminEmail);

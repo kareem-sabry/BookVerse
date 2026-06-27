@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using Asp.Versioning;
+﻿using Asp.Versioning;
+using BookVerse.Api.Extensions;
 using BookVerse.Application.Dtos.Payment;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
@@ -25,13 +25,6 @@ public class PaymentController : ControllerBase
     /// <summary>
     /// Create a Stripe PaymentIntent for the specified order.
     /// </summary>
-    /// <param name="orderId">The ID of the order to pay for.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>PaymentIntent response containing client secret and publishable key.</returns>
-    /// <response code="200">Payment intent created successfully.</response>
-    /// <response code="400">Order payment status is not pending or request is invalid.</response>
-    /// <response code="403">Order does not belong to the authenticated user.</response>
-    /// <response code="404">Order not found.</response>
     [HttpPost("create-intent/{orderId}")]
     [Authorize]
     [ProducesResponseType(typeof(PaymentIntentResponseDto), StatusCodes.Status200OK)]
@@ -47,23 +40,21 @@ public class PaymentController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var result = await _paymentService.CreatePaymentIntentAsync(orderId, userId, cancellationToken);
+        var result = await _paymentService.CreatePaymentIntentAsync(orderId, userId.Value, cancellationToken);
         return Ok(result);
     }
 
     /// <summary>
     /// Handle Stripe webhook events for payment intent status changes.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <response code="200">Webhook processed successfully.</response>
     [HttpPost("webhook")]
     [AllowAnonymous]
     [DisableRequestSizeLimit]

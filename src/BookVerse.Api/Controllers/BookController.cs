@@ -71,19 +71,6 @@ public class BookController : ControllerBase
     public async Task<ActionResult<BookReadDto>> CreateBook([FromBody] BookCreateDto bookDto,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
         var createdBook = await _booksService.CreateAsync(bookDto, cancellationToken);
         return CreatedAtAction(nameof(GetBookById), new { id = createdBook.Id }, createdBook);
     }
@@ -105,18 +92,6 @@ public class BookController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
 
         var updated = await _booksService.UpdateAsync(id, bookDto, cancellationToken);
 
