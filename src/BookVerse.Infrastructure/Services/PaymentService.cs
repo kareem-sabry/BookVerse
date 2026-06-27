@@ -166,7 +166,63 @@ public class PaymentService : IPaymentService
         }
         else if (parsedEvent.EventType == EventTypes.PaymentIntentPaymentFailed)
         {
-            if (parsedEvent.PaymentIntentId == null)
+            await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentPaymentFailed", cancellationToken);
+        }
+        else if (parsedEvent.EventType == EventTypes.PaymentIntentCanceled)
+        {
+            // Stripe fires this when a PaymentIntent is explicitly cancelled, or automatically
+            // when it times out (24h default) — e.g. the customer abandoned checkout partway through.
+            //Either way the order can't be left sitting in Pending forever, so it's resolved the same way a failed payment is resolved.
+
+            await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentCanceled", cancellationToken);
+        }
+        else
+        {
+            //Logging means an unexpected new Stripe
+            // event type shows up in our logs instead of vanishing without a trace.
+            _logger.LogInformation("Ignoring unhandled Stripe webhook event type: {EventType}",
+                parsedEvent.EventType);
+        }
+    }
+
+    private async Task MarkOrderPaymentFailedAsync(ParsedStripeEvent parsedEvent, string eventLabel,
+        CancellationToken cancellationToken)
+    {
+        if (parsedEvent.PaymentIntentId == null)
+        {
+            _logger.LogWarning("{EventLabel} event received but PaymentIntent object was null", eventLabel);
+            return;
+        }
+
+        var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
+            cancellationToken);
+
+        if (order == null)
+        {
+            _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", parsedEvent.PaymentIntentId);
+
+            return;
+        }
+
+        //Idempotency guard: already failed - nothing to do.
+        if (order.PaymentStatus == PaymentStatus.Failed)
+        {
+            _logger.LogInformation(
+                "Duplicate webhook ignored for already-failed order {OrderNumber}",
+                order.OrderNumber);
+            return;
+        }
+
+        order.PaymentStatus = PaymentStatus.Failed;
+        _unitOfWork.Orders.Update(order);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Order {OrderNumber} payment marked as Failed ({EventLabel})", order.OrderNumber,
+            eventLabel);
+    }
+}
+/*
+ *             if (parsedEvent.PaymentIntentId == null)
             {
                 _logger.LogWarning("PaymentIntentPaymentFailed event received but PaymentIntent object was null");
                 return;
@@ -194,6 +250,4 @@ public class PaymentService : IPaymentService
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Order {OrderNumber} payment marked as Failed", order.OrderNumber);
-        }
-    }
-}
+ */

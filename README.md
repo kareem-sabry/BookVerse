@@ -8,7 +8,7 @@
 [![SQL Server](https://img.shields.io/badge/Database-SQL%20Server%202022-CC2927?logo=microsoftsqlserver)](https://www.microsoft.com/sql-server)
 [![Redis](https://img.shields.io/badge/Cache-Redis%207-DC382D?logo=redis)](https://redis.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-74%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
+[![Tests](https://img.shields.io/badge/Tests-76%20Passing-2ea44f)](https://github.com/kareem-sabry/BookVerseApi/actions)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/)
 [![Stripe](https://img.shields.io/badge/Payments-Stripe-635BFF?logo=stripe)](https://stripe.com)
 
@@ -46,33 +46,33 @@
 
 ## 🏗 Architecture
 
-**Clean Architecture** with four clearly separated layers — `Core` has zero external dependencies, each outer layer only depends inward.
+**Clean Architecture** with four clearly separated layers each outer layer only depends inward.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      BookVerse.Api                           │
-│         Controllers, Middleware, Program.cs (DI/host)        │
-│                   (Presentation Layer)                       │
+│                      BookVerse.Api                          │
+│         Controllers, Middleware, Program.cs (DI/host)       │
+│                   (Presentation Layer)                      │
 └────────────────────────┬────────────────────────────────────┘
-                          │ depends on
+                         │ depends on
 ┌────────────────────────▼────────────────────────────────────┐
-│               BookVerse.Infrastructure                       │
-│   EF Core, Repositories, Redis cache, Stripe, SMTP email      │
-│                   (Data Access Layer)                         │
+│               BookVerse.Infrastructure                      │
+│   EF Core, Repositories, Redis cache, Stripe, SMTP email    │
+│                   (Data Access Layer)                       │
 └────────────────────────┬────────────────────────────────────┘
-                          │ depends on
+                         │ depends on
 ┌────────────────────────▼────────────────────────────────────┐
-│               BookVerse.Application                          │
-│           DTOs, Service Interfaces, IUnitOfWork               │
-│                  (Business Contracts Layer)                   │
+│               BookVerse.Application                         │
+│           DTOs, Service Interfaces, IUnitOfWork             │
+│                  (Business Contracts Layer)                 │
 └────────────────────────┬────────────────────────────────────┘
-                          │ depends on
+                         │ depends on
 ┌────────────────────────▼────────────────────────────────────┐
-│                  BookVerse.Core                               │
-│         Entities, Enums, Exceptions, Options Models            │
-│                    (Domain Layer)                              │
-│                                                                │
-│                   ⚡ ZERO External Dependencies                │
+│                  BookVerse.Core                             │
+│         Entities, Enums, Exceptions, Options Models         │
+│                    (Domain Layer)                           │
+│                                                             │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -440,7 +440,7 @@ Indexed columns include `Order.OrderNumber` (unique), `Order.UserId`, `Order.Ord
 
 ## 🧪 Testing
 
-**74 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
+**76 unit tests** with xUnit, Moq, and FluentAssertions, covering the service layer against mocked repositories/`IUnitOfWork`.
 
 | Service | Tests  |
 |---|--------|
@@ -448,8 +448,8 @@ Indexed columns include `Order.OrderNumber` (unique), `Order.UserId`, `Order.Ord
 | `BooksServiceTests` | 12     |
 | `CartServiceTests` | 16     |
 | `OrderServiceTests` | 29     |
-| `PaymentServiceTests` | 6      |
-| **Total** | **74** |
+| `PaymentServiceTests` | 8      |
+| **Total** | **76** |
 
 ### Run Tests
 
@@ -518,7 +518,7 @@ dotnet test --filter "FullyQualifiedName~OrderServiceTests"
 ```
 BookVerseApi/
 ├── src/
-│   ├── BookVerse.Core/            # Domain layer — zero external dependencies
+│   ├── BookVerse.Core/            # Domain layer
 │   │   ├── Entities/               # User, Book, Order, Cart, etc.
 │   │   ├── Enums/                  # OrderStatus, PaymentStatus, Role
 │   │   ├── Exceptions/             # NotFoundException, ConflictException, etc.
