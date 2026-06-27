@@ -35,8 +35,11 @@ if (builder.Environment.IsDevelopment())
 // ====================================
 // DATA PROTECTION
 // ====================================
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"] ??
+                             Path.Combine(AppContext.BaseDirectory, "dataprotection-keys");
+
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/app/dataprotection-keys"))
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
     .SetApplicationName("BookVerse");
 
 // ====================================
@@ -377,7 +380,9 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("ProductionPolicy", policy =>
     {
-        policy.WithOrigins("https://bookverseapi.com")
+        var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ??
+                            "https://bookverseapi.com";
+        policy.WithOrigins(allowedOrigin)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
