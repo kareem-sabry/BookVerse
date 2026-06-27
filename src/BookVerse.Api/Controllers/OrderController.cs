@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using Asp.Versioning;
+﻿using Asp.Versioning;
+using BookVerse.Api.Extensions;
 using BookVerse.Application.Dtos.Order;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
@@ -34,28 +34,15 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto orderCreateDto,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-
-        var order = await _orderService.CreateOrderFromCartAsync(userId, orderCreateDto, cancellationToken);
+        var order = await _orderService.CreateOrderFromCartAsync(userId.Value, orderCreateDto, cancellationToken);
         return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, order);
     }
 
@@ -68,15 +55,15 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> GetMyOrders([FromQuery] QueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var orders = await _orderService.GetUserOrdersAsync(userId, parameters, cancellationToken);
+        var orders = await _orderService.GetUserOrdersAsync(userId.Value, parameters, cancellationToken);
         return Ok(orders);
     }
 
@@ -112,8 +99,8 @@ public class OrderController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
@@ -123,7 +110,7 @@ public class OrderController : ControllerBase
         // Check if user is admin
         var isAdmin = User.IsInRole(IdentityRoleConstants.Admin);
 
-        var order = await _orderService.GetOrderByIdAsync(userId, id, cancellationToken, isAdmin);
+        var order = await _orderService.GetOrderByIdAsync(userId.Value, id, cancellationToken, isAdmin);
         if (order == null)
             return NotFound(new BasicResponse
             {
@@ -151,15 +138,15 @@ public class OrderController : ControllerBase
                 Message = ErrorMessages.InvalidId
             });
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        var userId = User.GetUserId();
+        if (userId == null)
             return Unauthorized(new BasicResponse
             {
                 Succeeded = false,
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _orderService.CancelOrderAsync(userId, id, cancellationToken);
+        var response = await _orderService.CancelOrderAsync(userId.Value, id, cancellationToken);
         if (response.Succeeded) return Ok(response);
 
         return BadRequest(response);
@@ -184,18 +171,6 @@ public class OrderController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
 
         var response = await _orderService.UpdateOrderStatusAsync(id, updateDto, cancellationToken);
         if (response.Succeeded) return Ok(response);
@@ -222,18 +197,6 @@ public class OrderController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
 
         var response = await _orderService.UpdatePaymentStatusAsync(id, updateDto, cancellationToken);
         if (response.Succeeded) return Ok(response);

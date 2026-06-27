@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using BookVerse.Api.Middlewares;
+using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
@@ -63,6 +64,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers();
+
+// [ApiController] already short-circuits with its own response BEFORE any ActionMethod runs whenever ModelState is invalid This factory makes that automatic, unavoidable response use the same BasicResponse shape as the rest of the API instead of the framework's default ValidationProblemDetails.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errorMessage = string.Join("; ",
+            context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+
+        return new BadRequestObjectResult(new BasicResponse
+        {
+            Succeeded = false,
+            Message = errorMessage
+        });
+    };
+});
 builder.Services.AddRateLimiter(options =>
 {
     // Global rate limit

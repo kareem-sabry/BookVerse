@@ -69,19 +69,6 @@ public class CategoryController : ControllerBase
     public async Task<ActionResult<CategoryReadDto>> CreateCategory(CategoryCreateDto categoryDto,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
         var createdCategory = await _categoryService.CreateAsync(categoryDto, cancellationToken);
         return CreatedAtAction(nameof(GetCategoryById), new { id = createdCategory.Id }, createdCategory);
     }
@@ -102,18 +89,6 @@ public class CategoryController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
 
         var updated = await _categoryService.UpdateAsync(id, categoryDto, cancellationToken);
         if (!updated)

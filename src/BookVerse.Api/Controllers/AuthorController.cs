@@ -69,19 +69,6 @@ public class AuthorController : ControllerBase
     public async Task<ActionResult<AuthorReadDto>> CreateAuthor([FromBody] AuthorCreateDto authorDto,
         CancellationToken cancellationToken = default)
     {
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
         var createdAuthor = await _service.CreateAsync(authorDto, cancellationToken);
 
         return CreatedAtAction(nameof(GetAuthor), new { id = createdAuthor.Id }, createdAuthor);
@@ -103,19 +90,6 @@ public class AuthorController : ControllerBase
                 Succeeded = false,
                 Message = ErrorMessages.InvalidId
             });
-        if (!ModelState.IsValid)
-        {
-            var errorMessage = string.Join("; ", ModelState.Values
-                .SelectMany(v => v.Errors)
-                .Select(e => e.ErrorMessage));
-
-            return BadRequest(new BasicResponse
-            {
-                Succeeded = false,
-                Message = errorMessage
-            });
-        }
-
         var updated = await _service.UpdateAsync(id, authorDto, cancellationToken);
 
         if (!updated)
