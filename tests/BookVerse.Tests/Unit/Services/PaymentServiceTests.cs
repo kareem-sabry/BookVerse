@@ -222,5 +222,69 @@ public class PaymentServiceTests
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task HandleWebhookAsync_WhenPaymentIntentCanceled_MarksOrderAsFailed()
+    {
+        // Arrange — simulates Stripe's 24h auto-cancel on an abandoned checkout
+
+        var paymentIntentId = "pi_abandoned_checkout";
+        var fakeEvent = BuildFakeEvent(EventTypes.PaymentIntentCanceled, paymentIntentId);
+
+        _mockWebhookConstructor.Setup(x => x.ConstructEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(fakeEvent);
+
+        var order = new Order
+        {
+            Id = 1,
+            OrderNumber = "ORD-20250101-000003",
+            PaymentStatus = PaymentStatus.Pending,
+            Status = OrderStatus.Pending,
+            StripePaymentIntentId = paymentIntentId
+        };
+
+        _mockOrderRepository
+            .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+
+        // Act
+        await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
+
+        // Assert - the order must not be left in Pending forever
+        order.PaymentStatus.Should().Be(PaymentStatus.Failed);
+        _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleWebhookAsync_WhenPaymentIntentCanceled_AndOrderAlreadyFailed_IsNoOp()
+    {
+        // Arrange — a payment_failed event already resolved this order the later canceled event for the same PaymentIntent must not double-process it
+        var paymentIntentId = "pi_already_failed_then_canceled";
+        var fakeEvent = BuildFakeEvent(EventTypes.PaymentIntentCanceled, paymentIntentId);
+
+        _mockWebhookConstructor
+            .Setup(x => x.ConstructEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(fakeEvent);
+
+        var order = new Order
+        {
+            Id = 1,
+            OrderNumber = "ORD-20250101-000004",
+            PaymentStatus = PaymentStatus.Failed,
+            StripePaymentIntentId = paymentIntentId
+        };
+
+        _mockOrderRepository
+            .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+
+        // Act
+        await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
+
+        // Assert
+        _mockOrderRepository.Verify(x => x.Update(It.IsAny<Order>()), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     #endregion
 }
