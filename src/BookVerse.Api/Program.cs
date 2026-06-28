@@ -21,10 +21,47 @@ using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
+using Serilog.Extensions.Hosting;
+using Serilog.Formatting.Compact;
 using Stripe;
 using AccountService = BookVerse.Infrastructure.Services.AccountService;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ====================================
+// LOGGING - SERILOG
+// ====================================
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithProcessId()
+        .Enrich.WithThreadId()
+        .Enrich.WithProperty("Application", "BookVerse");
+
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        configuration.WriteTo.Console(
+            outputTemplate:
+            "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId:l}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}");
+    }
+    else
+    {
+        configuration.WriteTo.Console(new CompactJsonFormatter());
+    }
+
+    var seqUrl = context.Configuration["Seq:ServerUrl"];
+    if (!string.IsNullOrEmpty(seqUrl))
+    {
+        configuration.WriteTo.Seq(seqUrl);
+    }
+});
+
 
 // ====================================
 // CONFIGURATION
@@ -432,6 +469,22 @@ using (var scope = app.Services.CreateScope())
 // MIDDLEWARE PIPELINE
 // ====================================
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+// Structured HTTP request logging (replaces default Microsoft request logging)
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = ((diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+        var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userId))
+            diagnosticContext.Set("UserId", userId);
+    });
+});
 // Configure the HTTP request pipeline.
 // Always register Swagger regardless of environment
 app.UseSwagger();
@@ -501,4 +554,11 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 });
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
