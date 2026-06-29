@@ -1,7 +1,6 @@
 ﻿using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
-using BookVerse.Core.Enums;
 using BookVerse.Core.Interfaces;
 using BookVerse.Infrastructure.Data.Seeds;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +44,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         modelBuilder.Entity<Book>()
             .Property(b => b.RowVersion)
             .IsRowVersion();
+        modelBuilder.Entity<Book>().HasIndex(b => b.Title).HasDatabaseName("IX_BooksTitle");
         modelBuilder.Entity<CartItem>()
             .Property(c => c.PriceAtAdd)
             .HasPrecision(18, 4);
@@ -82,11 +82,11 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 
             entity.Property(o => o.TotalAmount)
                 .HasPrecision(18, 2);
-            
+
             // RowVersion optimistic concurrency
             entity.Property(o => o.RowVersion).IsRowVersion();
-            
-            
+
+
             entity.HasOne(o => o.User)
                 .WithMany(u => u.Orders)
                 .HasForeignKey(o => o.UserId)
