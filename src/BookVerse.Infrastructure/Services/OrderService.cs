@@ -239,6 +239,7 @@ public class OrderService : IOrderService
     public async Task<BasicResponse> CancelOrderAsync(Guid userId, int orderId, CancellationToken cancellationToken)
     {
         List<int> bookIds = [];
+
         var earlyResult = await _unitOfWork.ExecuteInTransactionAsync<BasicResponse?>(async () =>
         {
             await _unitOfWork.BeginTransactionAsync();
@@ -285,6 +286,18 @@ public class OrderService : IOrderService
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 await _unitOfWork.CommitTransactionAsync();
                 return null;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // RowVersion mismatch — another request modified this order between our
+                // read and save. Roll back and surface a 409 so the client can retry.
+                _logger.LogWarning(ex,
+                    "Concurrency conflict cancelling order {OrderId} for user {UserId} — " +
+                    "another transaction modified this order concurrently",
+                    orderId, userId);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw new ConflictException(
+                    "Order could not be cancelled due to concurrent activity. Please try again.");
             }
             catch (Exception ex) when (ex is not NotFoundException)
             {

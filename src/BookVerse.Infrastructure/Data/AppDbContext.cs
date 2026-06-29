@@ -1,6 +1,7 @@
 ﻿using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Enums;
 using BookVerse.Core.Interfaces;
 using BookVerse.Infrastructure.Data.Seeds;
 using Microsoft.AspNetCore.Http;
@@ -66,10 +67,26 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 
             entity.HasIndex(o => o.OrderDate);
             entity.HasIndex(o => o.StripePaymentIntentId);
+            // Covering index for GetUserOrdersAsync.
+            // Query pattern: WHERE UserId = @id ORDER BY OrderDate DESC
+            // Without this index, SQL Server does a clustered index scan over all orders and then sorts — O(n) per user. With it, the seek is O(log n) and the INCLUDE columns eliminate a key lookup back to the clustered index.
+
+            entity.HasIndex(o => new { o.UserId, o.OrderDate })
+                .IsDescending(false, true) // UserId ASC, OrderDate DESC
+                .IncludeProperties(
+                    nameof(Order.Status),
+                    nameof(Order.TotalAmount),
+                    nameof(Order.OrderNumber),
+                    nameof(Order.PaymentStatus))
+                .HasDatabaseName("IX_Orders_UserId_OrderDate_Covering");
 
             entity.Property(o => o.TotalAmount)
                 .HasPrecision(18, 2);
-
+            
+            // RowVersion optimistic concurrency
+            entity.Property(o => o.RowVersion).IsRowVersion();
+            
+            
             entity.HasOne(o => o.User)
                 .WithMany(u => u.Orders)
                 .HasForeignKey(o => o.UserId)

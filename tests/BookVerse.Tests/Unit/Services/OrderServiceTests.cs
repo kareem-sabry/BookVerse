@@ -11,6 +11,7 @@ using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using BookVerse.Infrastructure.Services;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Stripe;
@@ -1073,6 +1074,51 @@ public class OrderServiceTests
             x => x.RemoveAsync(CacheKeys.Book(1), It.IsAny<CancellationToken>()), Times.Once);
         _mockCacheService.Verify(
             x => x.RemoveAsync(CacheKeys.Book(2), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+
+    [Fact]
+    public async Task CancelOrderAsync_WhenRowVersionConflictOnSave_ThrowsConflictExceptionAndRollsBack()
+    {
+        // Arrange
+        // Simulates: two concurrent cancel requests read the same RowVersion,
+        // one commits first, the second hits a DbUpdateConcurrencyException.
+        var userId = Guid.NewGuid();
+        var orderId = 1;
+
+        var order = new Order
+        {
+            Id = orderId,
+            UserId = userId,
+            Status = OrderStatus.Pending,
+            OrderItems = new List<OrderItem>()
+        };
+
+        _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        _mockOrderRepository
+            .Setup(x => x.GetUserOrderByIdAsync(userId, orderId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(order);
+        _mockBookRepository
+            .Setup(x => x.FindAsync(
+                It.IsAny<System.Linq.Expressions.Expression<Func<Book, bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book>());
+        _mockUnitOfWork
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("Simulated RowVersion conflict"));
+        _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
+
+        // Act
+        Func<Task> act = () => _sut.CancelOrderAsync(userId, orderId, CancellationToken.None);
+
+        // Assert
+        await act.Should()
+            .ThrowAsync<ConflictException>()
+            .WithMessage("*concurrent*");
+
+        _mockUnitOfWork.Verify(x => x.RollbackTransactionAsync(), Times.Once);
+        _mockUnitOfWork.Verify(x => x.CommitTransactionAsync(), Times.Never);
+        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

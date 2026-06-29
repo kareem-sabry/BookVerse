@@ -36,4 +36,10 @@ public class Order : IAuditable, IEntity
 
     [MaxLength(100)] public string? UpdatedBy { get; set; }
     [Key] public int Id { get; set; }
+
+    // Optimistic concurrency token — mirrors the Book entity pattern.
+    // EF Core adds WHERE RowVersion = @original to every UPDATE, so concurrent
+    // modifications (double-cancel, race on status update) surface as
+    // DbUpdateConcurrencyException instead of silently overwriting each other.
+    [Timestamp] public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
