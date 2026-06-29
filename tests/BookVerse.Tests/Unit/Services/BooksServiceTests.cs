@@ -40,6 +40,10 @@ public class BooksServiceTests
         _mockUnitOfWork.Setup(x => x.CommitTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.RollbackTransactionAsync()).Returns(Task.CompletedTask);
         _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _mockUnitOfWork.Setup(x => x.ExecuteInTransactionAsync(It.IsAny<Func<Task<BookReadDto>>>()))
+            .Returns((Func<Task<BookReadDto>> op) => op());
+        _mockUnitOfWork.Setup(x => x.ExecuteInTransactionAsync(It.IsAny<Func<Task<bool>>>()))
+            .Returns((Func<Task<bool>> op) => op());
 
         _sut = new BooksService(_mockUnitOfWork.Object, _mockMapper.Object, mockLogger.Object, _mockCache.Object);
     }

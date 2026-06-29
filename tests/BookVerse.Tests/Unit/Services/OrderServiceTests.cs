@@ -1171,7 +1171,7 @@ public class OrderServiceTests
             Status = OrderStatus.Shipped
         };
 
-        _mockOrderRepository.Setup(x => x.GetOrderWithDetailsAsync(orderId, It.IsAny<CancellationToken>()))
+        _mockOrderRepository.Setup(x => x.GetByIdAsync(orderId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Order?)null);
 
         // Act
