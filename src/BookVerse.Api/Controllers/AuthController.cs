@@ -59,6 +59,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("refresh-token")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
