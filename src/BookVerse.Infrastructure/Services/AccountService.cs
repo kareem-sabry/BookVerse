@@ -372,9 +372,9 @@ public class AccountService : IAccountService
         }
 
         user.RefreshToken = null;
+        user.PreviousRefreshToken = null;
         user.RefreshTokenExpiresAtUtc = null;
         await _userManager.UpdateAsync(user);
-
         _logger.LogInformation("Password reset successfully for: {Email}", user.Email);
 
         return new BasicResponse
