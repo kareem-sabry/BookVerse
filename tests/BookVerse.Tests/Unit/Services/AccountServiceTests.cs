@@ -295,8 +295,8 @@ public class AccountServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync__ReturnsFailure()
-    {WithInvalidEmail
+    public async Task LoginAsync_WithInvalidEmail_ReturnsFailure()
+    {
         // Arrange
         var loginRequest = new LoginRequest
         {
