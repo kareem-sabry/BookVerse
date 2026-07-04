@@ -27,9 +27,12 @@ public class CorrelationIdMiddleware
 
     private static string GetOrCreateCorrelationId(HttpContext context)
     {
-        return context.Request.Headers.TryGetValue(CorrelationIdHeader, out var existingId) &&
-               !string.IsNullOrWhiteSpace(existingId)
-            ? existingId.ToString()
-            : Guid.NewGuid().ToString("D");
+        if (context.Request.Headers.TryGetValue(CorrelationIdHeader, out var existingId) &&
+            Guid.TryParse(existingId.ToString(), out var parsedId))
+        {
+            return parsedId.ToString("D");
+        }
+
+        return Guid.NewGuid().ToString("D");
     }
 }
