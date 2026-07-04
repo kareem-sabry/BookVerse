@@ -15,6 +15,7 @@ public class AccountService : IAccountService
     private readonly IAuthTokenProcessor _authTokenProcessor;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly SignInManager<User> _signInManager;
     private readonly IEmailService _emailService;
     private readonly ILogger<AccountService> _logger;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
@@ -22,7 +23,8 @@ public class AccountService : IAccountService
 
     public AccountService(IAuthTokenProcessor authTokenProcessor, UserManager<User> userManager,
         RoleManager<IdentityRole<Guid>> roleManager, IEmailService emailService,
-        ILogger<AccountService> logger, IDateTimeProvider dateTimeProvider, IUnitOfWork unitOfWork)
+        ILogger<AccountService> logger, IDateTimeProvider dateTimeProvider, IUnitOfWork unitOfWork,
+        SignInManager<User> signInManager)
     {
         _authTokenProcessor = authTokenProcessor;
         _userManager = userManager;
@@ -31,6 +33,7 @@ public class AccountService : IAccountService
         _logger = logger;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
+        _signInManager = signInManager;
     }
 
     public async Task<RegisterResponse> RegisterAsync(RegisterRequest registerRequest,
@@ -124,6 +127,19 @@ public class AccountService : IAccountService
             };
         }
 
+        var signInResult =
+            await _signInManager.CheckPasswordSignInAsync(user, loginRequest.Password, lockoutOnFailure: true);
+
+        if (!signInResult.Succeeded)
+        {
+            _logger.LogWarning(
+                signInResult.IsLockedOut
+                    ? "Login blocked, account locked out: {Email}"
+                    : "Failed login attempt for email: {Email}",
+                loginRequest.Email);
+
+            return new LoginResponse { Succeeded = false, Message = ErrorMessages.InvalidCredentials };
+        }
 
         var roles = await _userManager.GetRolesAsync(user);
         var (jwtToken, expirationDateInUtc) = _authTokenProcessor.GenerateJwtToken(user, roles);
