@@ -473,7 +473,7 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
-    options.EnrichDiagnosticContext = ((diagnosticContext, httpContext) =>
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
         diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
@@ -481,19 +481,20 @@ app.UseSerilogRequestLogging(options =>
         var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!string.IsNullOrEmpty(userId))
             diagnosticContext.Set("UserId", userId);
-    });
+    };
 });
-// Configure the HTTP request pipeline.
-// Always register Swagger regardless of environment
-app.UseSwagger();
-app.UseSwaggerUI(options =>
-{
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BookVerse API v1");
-    options.RoutePrefix = "docs"; // serves at /docs
-});
+
+// Must be as early as possible so all downstream exceptions are caught
+app.UseExceptionHandler(opt => { });
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "BookVerse API v1");
+        options.RoutePrefix = "docs";
+    });
     app.UseCors("DevelopmentPolicy");
 }
 else
@@ -501,21 +502,19 @@ else
     app.UseCors("ProductionPolicy");
 }
 
-app.UseExceptionHandler(opt => { });
-
-//Security Headers middleware
+// Security headers on every response
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    context.Response.Headers["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:";
+    context.Response.Headers["Content-Security-Policy"] = app.Environment.IsDevelopment()
+        ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+        : "default-src 'none'; frame-ancestors 'none'";
 
     await next();
 });
-
 
 app.UseRateLimiter();
 app.UseResponseCaching();
@@ -523,9 +522,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-// Detailed health check response — returns JSON with component statuses.
-// This endpoint is intentionally unauthenticated so load balancers and
-// container orchestrators (Docker, Kubernetes) can probe it without credentials.
+
+// Intentionally unauthenticated — allows load balancers and container
+// orchestrators (Docker, Kubernetes) to probe without credentials.
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = async (context, report) =>

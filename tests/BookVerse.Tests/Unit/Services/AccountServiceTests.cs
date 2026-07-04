@@ -6,6 +6,7 @@ using BookVerse.Core.Enums;
 using BookVerse.Infrastructure.Services;
 using BookVerse.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -23,6 +24,7 @@ public class AccountServiceTests
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly AccountService _sut;
+    private readonly Mock<SignInManager<User>> _mockSignInManager;
 
     public AccountServiceTests()
     {
@@ -34,7 +36,12 @@ public class AccountServiceTests
         _mockLogger = new Mock<ILogger<AccountService>>();
         _mockTokenProcessor = new Mock<IAuthTokenProcessor>();
         _mockDateTimeProvider = new Mock<IDateTimeProvider>();
-
+        _mockSignInManager = new Mock<SignInManager<User>>(
+            _mockUserManager.Object,
+            new Mock<IHttpContextAccessor>().Object,
+            new Mock<IUserClaimsPrincipalFactory<User>>().Object,
+            null, null, null, null
+        );
         // Wire IUserRepository through IUnitOfWork — matches AccountService's new constructor
         _mockUnitOfWork.Setup(x => x.Users).Returns(_mockUserRepository.Object);
 
@@ -49,7 +56,8 @@ public class AccountServiceTests
             _mockEmailService.Object,
             _mockLogger.Object,
             _mockDateTimeProvider.Object,
-            _mockUnitOfWork.Object);
+            _mockUnitOfWork.Object,
+            _mockSignInManager.Object);
     }
 
     #region RegisterAsync Tests
@@ -263,6 +271,9 @@ public class AccountServiceTests
         _mockTokenProcessor.Setup(x => x.GenerateRefreshToken()).Returns(refreshToken);
 
         _mockUserManager.Setup(x => x.UpdateAsync(existingUser)).ReturnsAsync(IdentityResult.Success);
+        _mockSignInManager
+            .Setup(x => x.CheckPasswordSignInAsync(existingUser, loginRequest.Password, true))
+            .ReturnsAsync(SignInResult.Success);
 
         // Act
 

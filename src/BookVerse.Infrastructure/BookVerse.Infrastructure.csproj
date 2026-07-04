@@ -25,10 +25,11 @@
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0"/>
         <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0"/>
     </ItemGroup>
-
     <ItemGroup>
         <Folder Include="Data\Migrations\"/>
     </ItemGroup>
-
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
 
 </Project>
