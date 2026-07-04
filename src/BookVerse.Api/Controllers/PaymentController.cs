@@ -57,7 +57,7 @@ public class PaymentController : ControllerBase
     /// </summary>
     [HttpPost("webhook")]
     [AllowAnonymous]
-    [DisableRequestSizeLimit]
+    [RequestSizeLimit(1_000_000)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> HandleWebhook(CancellationToken cancellationToken = default)
     {
