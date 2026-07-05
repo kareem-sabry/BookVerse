@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Runtime.CompilerServices;
+using AutoMapper;
 using BookVerse.Application.Dtos.Order;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
@@ -264,6 +265,30 @@ public class OrderService : IOrderService
                         Succeeded = false,
                         Message = $"{ErrorMessages.CannotCancelOrderWithStatus}{order.Status}"
                     };
+                }
+
+                // If payment already cleared, refund before flipping any state — same rule
+                // UpdatePaymentStatusAsync follows: Stripe call first, DB only moves on success.
+                if (order.PaymentStatus == PaymentStatus.Completed)
+                {
+                    if (string.IsNullOrEmpty(order.StripePaymentIntentId))
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new ValidationException(ErrorMessages.OrderMissingPaymentIntent);
+                    }
+
+                    try
+                    {
+                        await _stripeRefundService.RefundAsync(order.StripePaymentIntentId, cancellationToken);
+                        order.PaymentStatus = PaymentStatus.Refunded;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Stripe refund failed while cancelling order {OrderId}", orderId);
+
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new PaymentProcessingException(ErrorMessages.StripeRefundFailed);
+                    }
                 }
 
                 order.Status = OrderStatus.Cancelled;
