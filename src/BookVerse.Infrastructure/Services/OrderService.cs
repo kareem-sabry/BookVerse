@@ -156,8 +156,7 @@ public class OrderService : IOrderService
                 }
             }
 
-            // Force cart RowVersion validation on the second SaveChangesAsync.
-            // Update() is required because the cart was loaded with AsNoTracking.
+            // Force a RowVersion check on the cart. Concurrent checkouts using the same RowVersion will fail with DbUpdateConcurrencyException on SaveChangesAsync. Update() is required because the cart was loaded with AsNoTracking.
             cart.UpdatedAtUtc = _dateTimeProvider.UtcNow;
             _unitOfWork.Carts.Update(cart);
 
