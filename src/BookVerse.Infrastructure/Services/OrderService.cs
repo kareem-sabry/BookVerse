@@ -493,6 +493,13 @@ public class OrderService : IOrderService
         }
 
         order.PaymentStatus = updateDto.PaymentStatus;
+
+        // Mirror the webhook (HandleWebhookAsync → PaymentIntentSucceeded): when payment is manually
+        // confirmed as Completed, advance the order to Processing so the fulfilment flow can
+        // continue without a separate admin call to UpdateOrderStatusAsync.
+        if (updateDto.PaymentStatus == PaymentStatus.Completed && order.Status == OrderStatus.Pending)
+            order.Status = OrderStatus.Processing;
+
         _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
