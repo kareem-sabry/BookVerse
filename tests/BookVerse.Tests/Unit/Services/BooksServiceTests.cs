@@ -16,6 +16,7 @@ public class BooksServiceTests
     private readonly Mock<IBookRepository> _mockBookRepository;
     private readonly Mock<IAuthorRepository> _mockAuthorRepository;
     private readonly Mock<ICategoryRepository> _mockCategoryRepository;
+    private readonly Mock<IGenericRepository<OrderItem>> _mockOrderItemRepository;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ICacheService> _mockCache;
@@ -31,9 +32,12 @@ public class BooksServiceTests
         _mockCache = new Mock<ICacheService>();
         var mockLogger = new Mock<ILogger<BooksService>>();
 
+        _mockOrderItemRepository = new Mock<IGenericRepository<OrderItem>>();
+
         _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
         _mockUnitOfWork.Setup(x => x.Authors).Returns(_mockAuthorRepository.Object);
         _mockUnitOfWork.Setup(x => x.Categories).Returns(_mockCategoryRepository.Object);
+        _mockUnitOfWork.Setup(x => x.OrderItems).Returns(_mockOrderItemRepository.Object);
 
         // Default transaction stubs — individual tests override only what they need.
         _mockUnitOfWork.Setup(x => x.BeginTransactionAsync()).Returns(Task.CompletedTask);
@@ -411,6 +415,11 @@ public class BooksServiceTests
         _mockBookRepository
             .Setup(x => x.GetByIdWithDetailsAsync(book.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(book);
+
+        // No active Pending/Processing orders reference this book
+        _mockOrderItemRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<OrderItem, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrderItem>());
 
         // Act
         var result = await _sut.DeleteAsync(book.Id, CancellationToken.None);

@@ -3,6 +3,7 @@ using BookVerse.Application.Dtos.Book;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
 using BookVerse.Core.Entities;
+using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -227,6 +228,21 @@ public class BooksService : IBooksService
         {
             _logger.LogWarning("Attempted to delete non-existent book with ID: {BookId}", id);
             return false;
+        }
+
+        // Block delete while referenced by an order still in flight. Without this, deletion either throws a raw FK-violation 500 or silently corrupts historical OrderItem rows, depending on cascade configuration.
+        
+        var hasActiveOrders = (await _unitOfWork.OrderItems.FindAsync(
+                oi => oi.BookId == id &&
+                      (oi.Order.Status == OrderStatus.Pending || oi.Order.Status == OrderStatus.Processing),
+                cancellationToken))
+            .Any();
+
+        if (hasActiveOrders)
+        {
+            _logger.LogWarning("Attempted to delete book {BookId} with active Pending/Processing orders", id);
+            throw new ConflictException(
+                $"Cannot delete book {id}: it has orders that are still Pending or Processing.");
         }
 
         _unitOfWork.Books.Delete(book);
