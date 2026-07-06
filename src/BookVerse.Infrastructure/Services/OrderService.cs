@@ -291,10 +291,21 @@ public class OrderService : IOrderService
                         await _stripeRefundService.RefundAsync(order.StripePaymentIntentId, cancellationToken);
                         order.PaymentStatus = PaymentStatus.Refunded;
                     }
+                    catch (StripeException ex) when (ex.StripeError?.Code == "charge_already_refunded")
+                    {
+                        // A prior cancel attempt refunded via Stripe, then the DB write failed and
+                        // the transaction was rolled back, reverting the DB to PaymentStatus.Completed.
+                        // The money is already returned to the customer; proceed so the DB is updated
+                        // to Refunded/Cancelled and stock is restored.
+                        _logger.LogWarning(ex,
+                            "Refund for order {OrderId} was already processed in Stripe — " +
+                            "DB update failed on a prior attempt; treating as success",
+                            orderId);
+                        order.PaymentStatus = PaymentStatus.Refunded;
+                    }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Stripe refund failed while cancelling order {OrderId}", orderId);
-
                         await _unitOfWork.RollbackTransactionAsync();
                         throw new PaymentProcessingException(ErrorMessages.StripeRefundFailed);
                     }
