@@ -134,6 +134,11 @@ public class OrderService : IOrderService
             {
                 var currentPrice = books[cartItem.BookId].Price;
 
+                if (currentPrice != cartItem.PriceAtAdd)
+                    _logger.LogInformation(
+                        "Price changed between cart and checkout for book {BookId}: cart showed {CartPrice}, charging {CurrentPrice}",
+                        cartItem.BookId, cartItem.PriceAtAdd, currentPrice);
+
                 var orderItem = new OrderItem
                 {
                     OrderId = order.Id,
@@ -157,7 +162,6 @@ public class OrderService : IOrderService
 
             // Clear the cart
             await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
-
             try
             {
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
