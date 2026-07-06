@@ -1140,6 +1140,7 @@ public class OrderServiceTests
         {
             Id = orderId,
             Status = OrderStatus.Processing,
+            PaymentStatus = PaymentStatus.Completed,  // required: Shipped guard checks this
             OrderItems = new List<OrderItem>()
         };
 
@@ -1200,6 +1201,7 @@ public class OrderServiceTests
         {
             Id = orderId,
             Status = OrderStatus.Shipped,
+            PaymentStatus = PaymentStatus.Completed,  // required: Delivered guard checks this
             Notes = "Previous notes",
             OrderItems = new List<OrderItem>()
         };

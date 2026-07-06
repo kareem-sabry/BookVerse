@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Runtime.CompilerServices;
+using AutoMapper;
 using BookVerse.Application.Dtos.Order;
 using BookVerse.Application.Dtos.User;
 using BookVerse.Application.Interfaces;
@@ -150,6 +151,10 @@ public class OrderService : IOrderService
                 }
             }
 
+            // Force a RowVersion check on the cart. Concurrent checkouts using the same RowVersion will fail with DbUpdateConcurrencyException on SaveChangesAsync. Update() is required because the cart was loaded with AsNoTracking.
+            cart.UpdatedAtUtc = _dateTimeProvider.UtcNow;
+            _unitOfWork.Carts.Update(cart);
+
             // Clear the cart
             await _unitOfWork.Carts.ClearCartAsync(cart.Id, cancellationToken);
 
@@ -266,6 +271,30 @@ public class OrderService : IOrderService
                     };
                 }
 
+                // If payment already cleared, refund before flipping any state — same rule
+                // UpdatePaymentStatusAsync follows: Stripe call first, DB only moves on success.
+                if (order.PaymentStatus == PaymentStatus.Completed)
+                {
+                    if (string.IsNullOrEmpty(order.StripePaymentIntentId))
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new ValidationException(ErrorMessages.OrderMissingPaymentIntent);
+                    }
+
+                    try
+                    {
+                        await _stripeRefundService.RefundAsync(order.StripePaymentIntentId, cancellationToken);
+                        order.PaymentStatus = PaymentStatus.Refunded;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Stripe refund failed while cancelling order {OrderId}", orderId);
+
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new PaymentProcessingException(ErrorMessages.StripeRefundFailed);
+                    }
+                }
+
                 order.Status = OrderStatus.Cancelled;
                 _unitOfWork.Orders.Update(order);
 
@@ -332,25 +361,44 @@ public class OrderService : IOrderService
             return new BasicResponse { Succeeded = false, Message = ErrorMessages.OrderNotFound };
         }
 
-        // Enforce forward-only transitions via an explicit allowlist — mirrors payment status logic.
+        // Cancellation removed from this allowlist on purpose: cancelling has side effects
+        // (stock restore, refund-if-paid) that only CancelOrderAsync performs. Routing Cancelled through here would flip Status without doing either.
+
         var isValidTransition = (order.Status, updateDto.Status) switch
         {
             (OrderStatus.Pending, OrderStatus.Processing) => true,
             (OrderStatus.Processing, OrderStatus.Shipped) => true,
             (OrderStatus.Shipped, OrderStatus.Delivered) => true,
-            (OrderStatus.Pending, OrderStatus.Cancelled) => true,
-            (OrderStatus.Processing, OrderStatus.Cancelled) => true,
             _ => false
         };
+
         if (!isValidTransition)
             throw new ConflictException(
                 $"{ErrorMessages.CannotUpdateTerminalOrderStatus}: {order.Status} → {updateDto.Status}");
+
+        // Never ship/deliver against an order whose payment hasn't actually cleared.
+        if ((updateDto.Status is OrderStatus.Shipped or OrderStatus.Delivered) &&
+            order.PaymentStatus != PaymentStatus.Completed)
+            throw new ConflictException(
+                $"Cannot move order {orderId} to {updateDto.Status}: payment status is {order.PaymentStatus}, not Completed.");
 
         order.Status = updateDto.Status;
         if (!string.IsNullOrWhiteSpace(updateDto.Notes)) order.Notes = updateDto.Notes;
 
         _unitOfWork.Orders.Update(order);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex,
+                "Concurrency conflict updating status for order {OrderId} — another transaction modified it concurrently",
+                orderId);
+            throw new ConflictException(
+                "Order status could not be updated due to concurrent activity. Please try again.");
+        }
 
         _logger.LogInformation("Order status updated: {OrderId} to {Status}", orderId, updateDto.Status);
         return new BasicResponse { Succeeded = true, Message = SuccessMessages.OrderStatusUpdated };
