@@ -213,12 +213,46 @@ public class PaymentService : IPaymentService
             return;
         }
 
-        order.PaymentStatus = PaymentStatus.Failed;
-        _unitOfWork.Orders.Update(order);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        // Secondary guard: CancelOrderAsync may have already cancelled this order (and restored stock) before this webhook fired. In that case, just mark the payment failed and exit  do NOT restore stock a second time.
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            order.PaymentStatus = PaymentStatus.Failed;
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Order {OrderNumber} was already cancelled — payment marked Failed without stock change",
+                order.OrderNumber);
+            return;
+        }
 
-        _logger.LogInformation("Order {OrderNumber} payment marked as Failed ({EventLabel})", order.OrderNumber,
-            eventLabel);
+        order.PaymentStatus = PaymentStatus.Failed;
+        order.Status = OrderStatus.Cancelled;
+        _unitOfWork.Orders.Update(order);
+
+        // Restore stock. GetByStripePaymentIntentIdAsync does not Include(o => o.OrderItems),so we query them separately.
+
+        var failedOrderItems = await _unitOfWork.OrderItems.FindAsync(oi => oi.OrderId == order.Id, cancellationToken);
+
+        if (failedOrderItems.Count > 0)
+        {
+            var bookIds = failedOrderItems.Select(oi => oi.BookId).ToList();
+            var books =
+                (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken)).ToDictionary(b =>
+                    b.Id);
+
+            foreach (var item in failedOrderItems)
+            {
+                if (books.TryGetValue(item.BookId, out var book))
+                {
+                    book.QuantityInStock += item.Quantity;
+                    _unitOfWork.Books.Update(book);
+                }
+            }
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Order {OrderNumber} auto-cancelled and stock restored ({EventLabel})",
+            order.OrderNumber, eventLabel);
     }
 }
 /*
