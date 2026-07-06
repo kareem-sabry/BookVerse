@@ -102,20 +102,24 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers();
+builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
 // [ApiController] already short-circuits with its own response BEFORE any ActionMethod runs whenever ModelState is invalid This factory makes that automatic, unavoidable response use the same BasicResponse shape as the rest of the API instead of the framework's default ValidationProblemDetails.
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
-        var errorMessage = string.Join("; ",
-            context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-
-        return new BadRequestObjectResult(new BasicResponse
+        var problemDetails = new ValidationProblemDetails(context.ModelState)
         {
-            Succeeded = false,
-            Message = errorMessage
-        });
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Validation Error",
+            Instance = context.HttpContext.Request.Path,
+            Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
+        };
+        problemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        problemDetails.Extensions["correlationId"] = context.HttpContext.Items["X-Correlation-Id"]?.ToString();
+
+        return new BadRequestObjectResult(problemDetails);
     };
 });
 builder.Services.AddRateLimiter(options =>

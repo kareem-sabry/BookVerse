@@ -50,7 +50,7 @@ public class CartController : ControllerBase
     }
 
     [HttpPost("items")]
-    [ProducesResponseType(typeof(CartDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CartDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> AddToCart([FromBody] CartItemAdd cartItemAdd,
@@ -65,7 +65,7 @@ public class CartController : ControllerBase
             });
 
         var cart = await _cartService.AddToCartAsync(userId.Value, cartItemAdd, cancellationToken);
-        return Ok(cart);
+        return StatusCode(StatusCodes.Status201Created, cart);
     }
 
     [HttpPut("items/{cartItemId:int}")]
@@ -104,7 +104,7 @@ public class CartController : ControllerBase
     }
 
     [HttpDelete("items/{cartItemId:int}")]
-    [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -127,13 +127,13 @@ public class CartController : ControllerBase
 
         var response = await _cartService.RemoveCartItemAsync(userId.Value, cartItemId, cancellationToken);
 
-        if (response.Succeeded) return Ok(response);
+        if (response.Succeeded) return NoContent();
 
         return NotFound(response);
     }
 
     [HttpDelete("clear-cart")]
-    [ProducesResponseType(typeof(BasicResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ClearCart(CancellationToken cancellationToken = default)
     {
@@ -145,7 +145,7 @@ public class CartController : ControllerBase
                 Message = ErrorMessages.InvalidUserContext
             });
 
-        var response = await _cartService.ClearCartAsync(userId.Value, cancellationToken);
-        return Ok(response);
+        await _cartService.ClearCartAsync(userId.Value, cancellationToken);
+        return NoContent();
     }
 }
