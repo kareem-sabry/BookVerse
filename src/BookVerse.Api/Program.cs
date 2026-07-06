@@ -102,6 +102,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers();
+builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
 // [ApiController] already short-circuits with its own response BEFORE any ActionMethod runs whenever ModelState is invalid This factory makes that automatic, unavoidable response use the same BasicResponse shape as the rest of the API instead of the framework's default ValidationProblemDetails.
 builder.Services.Configure<ApiBehaviorOptions>(options =>
