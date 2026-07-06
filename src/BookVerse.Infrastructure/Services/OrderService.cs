@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using BookVerse.Core.Exceptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
 
 namespace BookVerse.Infrastructure.Services;
 
@@ -461,6 +462,16 @@ public class OrderService : IOrderService
                 _logger.LogInformation(
                     "Stripe refund issued for order {OrderId}, PaymentIntent {Id}",
                     orderId, order.StripePaymentIntentId);
+            }
+            catch (StripeException ex) when (ex.StripeError?.Code == "charge_already_refunded")
+            {
+                // A prior attempt issued the refund but SaveChangesAsync failed, leaving the DB at PaymentStatus.Completed. The money is already returned to the customer.
+                // Proceed to update the DB so it reflects the true state. 
+
+                _logger.LogWarning(
+                    "Refund for order {OrderId} was already processed in Stripe — " +
+                    "DB write must have failed on a prior attempt; treating as success",
+                    orderId);
             }
             catch (Exception ex)
             {

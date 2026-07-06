@@ -255,33 +255,3 @@ public class PaymentService : IPaymentService
             order.OrderNumber, eventLabel);
     }
 }
-/*
- *             if (parsedEvent.PaymentIntentId == null)
-            {
-                _logger.LogWarning("PaymentIntentPaymentFailed event received but PaymentIntent object was null");
-                return;
-            }
-
-            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
-                cancellationToken);
-            if (order == null)
-            {
-                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", parsedEvent.PaymentIntentId);
-                return;
-            }
-
-            // Idempotency guard: already failed — nothing to do.
-            if (order.PaymentStatus == PaymentStatus.Failed)
-            {
-                _logger.LogInformation(
-                    "Duplicate webhook ignored for already-failed order {OrderNumber}",
-                    order.OrderNumber);
-                return;
-            }
-
-            order.PaymentStatus = PaymentStatus.Failed;
-            _unitOfWork.Orders.Update(order);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Order {OrderNumber} payment marked as Failed", order.OrderNumber);
- */
