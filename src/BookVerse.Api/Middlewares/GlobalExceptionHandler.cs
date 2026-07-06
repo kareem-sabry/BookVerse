@@ -59,6 +59,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden"),
             ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
             PaymentProcessingException => (StatusCodes.Status502BadGateway, "Payment Processing Error"),
+            Stripe.StripeException => (StatusCodes.Status400BadRequest, "Invalid Webhook Signature"),
+
 
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid Argument"),
