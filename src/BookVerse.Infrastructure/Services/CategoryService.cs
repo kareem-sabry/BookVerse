@@ -96,6 +96,20 @@ public class CategoryService : ICategoryService
             return false;
         }
 
+        var hasBooks = (await _unitOfWork.Books.FindAsync(
+                b => b.BookCategories.Any(bc => bc.CategoryId == id), cancellationToken))
+            .Any();
+
+        if (hasBooks)
+        {
+            _logger.LogWarning(
+                "Attempted to delete category {CategoryId} that still has books assigned to it", id);
+
+            throw new ConflictException(
+                $"Cannot delete category {id}: it has books assigned to it. " +
+                "Reassign or remove those books before deleting this category.");
+        }
+
         _unitOfWork.Categories.Delete(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
