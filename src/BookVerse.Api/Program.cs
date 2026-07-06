@@ -108,14 +108,17 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
-        var errorMessage = string.Join("; ",
-            context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-
-        return new BadRequestObjectResult(new BasicResponse
+        var problemDetails = new ValidationProblemDetails(context.ModelState)
         {
-            Succeeded = false,
-            Message = errorMessage
-        });
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Validation Error",
+            Instance = context.HttpContext.Request.Path,
+            Type = $"https://httpstatuses.com/{StatusCodes.Status400BadRequest}"
+        };
+        problemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        problemDetails.Extensions["correlationId"] = context.HttpContext.Items["X-Correlation-Id"]?.ToString();
+
+        return new BadRequestObjectResult(problemDetails);
     };
 });
 builder.Services.AddRateLimiter(options =>
