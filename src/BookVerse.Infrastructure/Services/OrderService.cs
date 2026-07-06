@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using BookVerse.Core.Exceptions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
 
 namespace BookVerse.Infrastructure.Services;
 
@@ -290,10 +291,21 @@ public class OrderService : IOrderService
                         await _stripeRefundService.RefundAsync(order.StripePaymentIntentId, cancellationToken);
                         order.PaymentStatus = PaymentStatus.Refunded;
                     }
+                    catch (StripeException ex) when (ex.StripeError?.Code == "charge_already_refunded")
+                    {
+                        // A prior cancel attempt refunded via Stripe, then the DB write failed and
+                        // the transaction was rolled back, reverting the DB to PaymentStatus.Completed.
+                        // The money is already returned to the customer; proceed so the DB is updated
+                        // to Refunded/Cancelled and stock is restored.
+                        _logger.LogWarning(ex,
+                            "Refund for order {OrderId} was already processed in Stripe — " +
+                            "DB update failed on a prior attempt; treating as success",
+                            orderId);
+                        order.PaymentStatus = PaymentStatus.Refunded;
+                    }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Stripe refund failed while cancelling order {OrderId}", orderId);
-
                         await _unitOfWork.RollbackTransactionAsync();
                         throw new PaymentProcessingException(ErrorMessages.StripeRefundFailed);
                     }
@@ -462,6 +474,16 @@ public class OrderService : IOrderService
                     "Stripe refund issued for order {OrderId}, PaymentIntent {Id}",
                     orderId, order.StripePaymentIntentId);
             }
+            catch (StripeException ex) when (ex.StripeError?.Code == "charge_already_refunded")
+            {
+                // A prior attempt issued the refund but SaveChangesAsync failed, leaving the DB at PaymentStatus.Completed. The money is already returned to the customer.
+                // Proceed to update the DB so it reflects the true state. 
+
+                _logger.LogWarning(
+                    "Refund for order {OrderId} was already processed in Stripe — " +
+                    "DB write must have failed on a prior attempt; treating as success",
+                    orderId);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Stripe refund failed for order {OrderId}", orderId);
@@ -471,6 +493,13 @@ public class OrderService : IOrderService
         }
 
         order.PaymentStatus = updateDto.PaymentStatus;
+
+        // Mirror the webhook (HandleWebhookAsync → PaymentIntentSucceeded): when payment is manually
+        // confirmed as Completed, advance the order to Processing so the fulfilment flow can
+        // continue without a separate admin call to UpdateOrderStatusAsync.
+        if (updateDto.PaymentStatus == PaymentStatus.Completed && order.Status == OrderStatus.Pending)
+            order.Status = OrderStatus.Processing;
+
         _unitOfWork.Orders.Update(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -1,6 +1,8 @@
-﻿using BookVerse.Application.Dtos.Payment;
+﻿using System.Linq.Expressions;
+using BookVerse.Application.Dtos.Payment;
 using BookVerse.Application.Interfaces;
 using BookVerse.Core.Constants;
+using BookVerse.Core.Entities;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
@@ -21,6 +23,8 @@ public class PaymentServiceTests
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IStripePaymentIntentService> _mockStripePaymentIntentService;
     private readonly Mock<IStripeWebhookConstructor> _mockWebhookConstructor;
+    private readonly Mock<IGenericRepository<OrderItem>> _mockOrderItemRepository;
+    private readonly Mock<IBookRepository> _mockBookRepository;
     private readonly PaymentService _sut;
 
     public PaymentServiceTests()
@@ -30,7 +34,12 @@ public class PaymentServiceTests
         _mockOrderRepository = new Mock<IOrderRepository>();
         _mockStripePaymentIntentService = new Mock<IStripePaymentIntentService>();
         _mockWebhookConstructor = new Mock<IStripeWebhookConstructor>();
+        _mockOrderItemRepository = new Mock<IGenericRepository<OrderItem>>();
+        _mockBookRepository = new Mock<IBookRepository>();
+
         _mockUnitOfWork.Setup(x => x.Orders).Returns(_mockOrderRepository.Object);
+        _mockUnitOfWork.Setup(x => x.OrderItems).Returns(_mockOrderItemRepository.Object);
+        _mockUnitOfWork.Setup(x => x.Books).Returns(_mockBookRepository.Object);
 
         var stripeOptions = Options.Create(new StripeOptions
         {
@@ -246,11 +255,20 @@ public class PaymentServiceTests
             .Setup(x => x.GetByStripePaymentIntentIdAsync(paymentIntentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
 
+        // Stub the stock-restore queries added by the fix
+        _mockOrderItemRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<OrderItem, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrderItem>());
+        _mockBookRepository
+            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Book, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Book>());
+
         // Act
         await _sut.HandleWebhookAsync("raw_body", "stripe_sig", CancellationToken.None);
 
-        // Assert - the order must not be left in Pending forever
+        // Assert — payment failed, order auto-cancelled, stock restoration attempted
         order.PaymentStatus.Should().Be(PaymentStatus.Failed);
+        order.Status.Should().Be(OrderStatus.Cancelled);
         _mockOrderRepository.Verify(x => x.Update(order), Times.Once);
         _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

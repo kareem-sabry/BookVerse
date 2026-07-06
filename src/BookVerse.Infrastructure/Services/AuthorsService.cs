@@ -99,6 +99,20 @@ public class AuthorsService : IAuthorsService
             return false;
         }
 
+        var hasBooks = (await _unitOfWork.Books.FindAsync(
+                b => b.BookAuthors.Any(ba => ba.AuthorId == id), cancellationToken))
+            .Any();
+
+        if (hasBooks)
+        {
+            _logger.LogWarning(
+                "Attempted to delete author {AuthorId} who still has books in the system", id);
+
+            throw new ConflictException(
+                $"Cannot delete author {id}: they have books associated with them. " +
+                "Reassign or remove those books before deleting this author.");
+        }
+
         _unitOfWork.Authors.Delete(retrievedAuthor);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
