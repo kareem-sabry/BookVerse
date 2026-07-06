@@ -17,4 +17,5 @@ public class Cart : IAuditable, IEntity
 
     [MaxLength(100)] public string? UpdatedBy { get; set; }
     [Key] public int Id { get; set; }
+    [Timestamp] public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
