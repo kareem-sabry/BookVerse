@@ -7,4 +7,5 @@
 /// </summary>
 public sealed record ParsedStripeEvent(
     string EventType,
-    string? PaymentIntentId);
+    string? PaymentIntentId,
+    DateTime EventCreatedAtUtc);

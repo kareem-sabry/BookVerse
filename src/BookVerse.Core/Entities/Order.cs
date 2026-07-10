@@ -25,6 +25,10 @@ public class Order : IAuditable, IEntity
 
     [MaxLength(100)] public string? StripePaymentIntentId { get; set; }
 
+    // Stripe event Created timestamp (UTC) of the last webhook that changed PaymentStatus.
+    // Used to reject stale out-of-order deliveries: any webhook whose Created is strictly older than this value predates the current state and is skipped.
+    public DateTime? PaymentEventProcessedAtUtc { get; set; }
+
     [MaxLength(1000)] public string? Notes { get; set; }
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

@@ -138,11 +138,12 @@ public class PaymentServiceTests
 
     #region HandleWebhookAsync — Idempotency Tests
 
-    private static ParsedStripeEvent BuildFakeEvent(string eventType, string? paymentIntentId)
+    private static ParsedStripeEvent BuildFakeEvent(
+        string eventType,
+        string? paymentIntentId,
+        DateTime? eventCreatedAtUtc = null)
     {
-        return new ParsedStripeEvent
-        (eventType,
-            paymentIntentId);
+        return new ParsedStripeEvent(eventType, paymentIntentId, eventCreatedAtUtc ?? DateTime.UtcNow);
     }
 
     [Fact]
