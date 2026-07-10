@@ -157,9 +157,23 @@ public class PaymentService : IPaymentService
                 return;
             }
 
+            if (order.PaymentEventProcessedAtUtc.HasValue &&
+                parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
+            {
+                _logger.LogWarning(
+                    "Stale PaymentIntentSucceeded ignored for order {OrderNumber}: " +
+                    "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
+                    order.OrderNumber,
+                    parsedEvent.EventCreatedAtUtc,
+                    order.PaymentEventProcessedAtUtc.Value);
+                return;
+            }
+
             order.PaymentStatus = PaymentStatus.Completed;
             order.Status = OrderStatus.Processing;
+            order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
             _unitOfWork.Orders.Update(order);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Order {OrderNumber} updated to Completed/Processing", order.OrderNumber);
@@ -213,10 +227,24 @@ public class PaymentService : IPaymentService
             return;
         }
 
+        if (order.PaymentEventProcessedAtUtc.HasValue &&
+            parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
+        {
+            _logger.LogWarning(
+                "Stale {EventLabel} ignored for order {OrderNumber}: " +
+                "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
+                eventLabel,
+                order.OrderNumber,
+                parsedEvent.EventCreatedAtUtc,
+                order.PaymentEventProcessedAtUtc.Value);
+            return;
+        }
+
         // Secondary guard: CancelOrderAsync may have already cancelled this order (and restored stock) before this webhook fired. In that case, just mark the payment failed and exit  do NOT restore stock a second time.
         if (order.Status == OrderStatus.Cancelled)
         {
             order.PaymentStatus = PaymentStatus.Failed;
+            order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
             _unitOfWork.Orders.Update(order);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogInformation(
@@ -227,6 +255,7 @@ public class PaymentService : IPaymentService
 
         order.PaymentStatus = PaymentStatus.Failed;
         order.Status = OrderStatus.Cancelled;
+        order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
         _unitOfWork.Orders.Update(order);
 
         // Restore stock. GetByStripePaymentIntentIdAsync does not Include(o => o.OrderItems),so we query them separately.
