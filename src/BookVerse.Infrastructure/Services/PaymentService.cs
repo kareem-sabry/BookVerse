@@ -4,6 +4,7 @@ using BookVerse.Core.Constants;
 using BookVerse.Core.Enums;
 using BookVerse.Core.Exceptions;
 using BookVerse.Core.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
@@ -127,75 +128,90 @@ public class PaymentService : IPaymentService
             throw new ValidationException(ErrorMessages.StripeWebhookSignatureInvalid);
         }
 
-        if (parsedEvent.EventType == EventTypes.PaymentIntentSucceeded)
+        // RowVersion on Order means concurrent deliveries of the same PaymentIntent will race at the DB level. The loser throws DbUpdateConcurrencyException.
+        // We catch it here, log as Warning, and return 503 so Stripe retries. On retry the ordering guard rejects the stale event correctly.
+        try
         {
-            if (parsedEvent.PaymentIntentId == null)
+            if (parsedEvent.EventType == EventTypes.PaymentIntentSucceeded)
             {
-                _logger.LogWarning("PaymentIntentSucceeded event received but PaymentIntent object was null");
-                return;
+                if (parsedEvent.PaymentIntentId == null)
+                {
+                    _logger.LogWarning("PaymentIntentSucceeded event received but PaymentIntent object was null");
+                    return;
+                }
+
+                _logger.LogInformation("PaymentIntent succeeded: {PaymentIntentId}", parsedEvent.PaymentIntentId);
+
+                var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
+                    cancellationToken);
+                if (order == null)
+                {
+                    _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}",
+                        parsedEvent.PaymentIntentId);
+                    return;
+                }
+
+                // Idempotency guard: if this event was already processed, treat as a no-op.
+                // Stripe retries webhooks on non-2xx; without this guard, a retry would
+                // re-fulfill an already-paid order.
+
+                if (order.PaymentStatus == PaymentStatus.Completed)
+                {
+                    _logger.LogInformation(
+                        "Duplicate webhook ignored for already-completed order {OrderNumber}",
+                        order.OrderNumber);
+                    return;
+                }
+
+                if (order.PaymentEventProcessedAtUtc.HasValue &&
+                    parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
+                {
+                    _logger.LogWarning(
+                        "Stale PaymentIntentSucceeded ignored for order {OrderNumber}: " +
+                        "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
+                        order.OrderNumber,
+                        parsedEvent.EventCreatedAtUtc,
+                        order.PaymentEventProcessedAtUtc.Value);
+                    return;
+                }
+
+                order.PaymentStatus = PaymentStatus.Completed;
+                order.Status = OrderStatus.Processing;
+                order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
+                _unitOfWork.Orders.Update(order);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Order {OrderNumber} updated to Completed/Processing", order.OrderNumber);
             }
-
-            _logger.LogInformation("PaymentIntent succeeded: {PaymentIntentId}", parsedEvent.PaymentIntentId);
-
-            var order = await _unitOfWork.Orders.GetByStripePaymentIntentIdAsync(parsedEvent.PaymentIntentId,
-                cancellationToken);
-            if (order == null)
+            else if (parsedEvent.EventType == EventTypes.PaymentIntentPaymentFailed)
             {
-                _logger.LogWarning("No order found for PaymentIntent {PaymentIntentId}", parsedEvent.PaymentIntentId);
-                return;
+                await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentPaymentFailed", cancellationToken);
             }
-
-            // Idempotency guard: if this event was already processed, treat as a no-op.
-            // Stripe retries webhooks on non-2xx; without this guard, a retry would
-            // re-fulfill an already-paid order.
-
-            if (order.PaymentStatus == PaymentStatus.Completed)
+            else if (parsedEvent.EventType == EventTypes.PaymentIntentCanceled)
             {
-                _logger.LogInformation(
-                    "Duplicate webhook ignored for already-completed order {OrderNumber}",
-                    order.OrderNumber);
-                return;
-            }
+                // Stripe fires this when a PaymentIntent is explicitly cancelled, or automatically
+                // when it times out (24h default) — e.g. the customer abandoned checkout partway through.
+                //Either way the order can't be left sitting in Pending forever, so it's resolved the same way a failed payment is resolved.
 
-            if (order.PaymentEventProcessedAtUtc.HasValue &&
-                parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
+                await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentCanceled", cancellationToken);
+            }
+            else
             {
-                _logger.LogWarning(
-                    "Stale PaymentIntentSucceeded ignored for order {OrderNumber}: " +
-                    "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
-                    order.OrderNumber,
-                    parsedEvent.EventCreatedAtUtc,
-                    order.PaymentEventProcessedAtUtc.Value);
-                return;
+                //Logging means an unexpected new Stripe
+                // event type shows up in our logs instead of vanishing without a trace.
+                _logger.LogInformation("Ignoring unhandled Stripe webhook event type: {EventType}",
+                    parsedEvent.EventType);
             }
-
-            order.PaymentStatus = PaymentStatus.Completed;
-            order.Status = OrderStatus.Processing;
-            order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
-            _unitOfWork.Orders.Update(order);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Order {OrderNumber} updated to Completed/Processing", order.OrderNumber);
-        }
-        else if (parsedEvent.EventType == EventTypes.PaymentIntentPaymentFailed)
+        } // end try
+        catch (DbUpdateConcurrencyException ex)
         {
-            await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentPaymentFailed", cancellationToken);
-        }
-        else if (parsedEvent.EventType == EventTypes.PaymentIntentCanceled)
-        {
-            // Stripe fires this when a PaymentIntent is explicitly cancelled, or automatically
-            // when it times out (24h default) — e.g. the customer abandoned checkout partway through.
-            //Either way the order can't be left sitting in Pending forever, so it's resolved the same way a failed payment is resolved.
-
-            await MarkOrderPaymentFailedAsync(parsedEvent, "PaymentIntentCanceled", cancellationToken);
-        }
-        else
-        {
-            //Logging means an unexpected new Stripe
-            // event type shows up in our logs instead of vanishing without a trace.
-            _logger.LogInformation("Ignoring unhandled Stripe webhook event type: {EventType}",
-                parsedEvent.EventType);
+            _logger.LogWarning(ex,
+                "Concurrent webhook delivery detected for PaymentIntent {PaymentIntentId}. " +
+                "RowVersion conflict — another handler won the race. Stripe will retry.",
+                parsedEvent.PaymentIntentId);
+            throw new WebhookConcurrentDeliveryException(
+                $"Concurrent webhook delivery for PaymentIntent {parsedEvent.PaymentIntentId}.", ex);
         }
     }
 
@@ -260,13 +276,15 @@ public class PaymentService : IPaymentService
 
         // Restore stock. GetByStripePaymentIntentIdAsync does not Include(o => o.OrderItems),so we query them separately.
 
-        var failedOrderItems = await _unitOfWork.OrderItems.FindAsync(oi => oi.OrderId == order.Id, cancellationToken);
+        var failedOrderItems =
+            await _unitOfWork.OrderItems.FindAsync(oi => oi.OrderId == order.Id, cancellationToken);
 
         if (failedOrderItems.Count > 0)
         {
             var bookIds = failedOrderItems.Select(oi => oi.BookId).ToList();
             var books =
-                (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken)).ToDictionary(b =>
+                (await _unitOfWork.Books.FindAsync(b => bookIds.Contains(b.Id), cancellationToken))
+                .ToDictionary(b =>
                     b.Id);
 
             foreach (var item in failedOrderItems)

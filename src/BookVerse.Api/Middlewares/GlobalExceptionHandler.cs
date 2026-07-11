@@ -28,7 +28,14 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         // Expected domain exceptions (4xx) are informational — log as Warning.
         // Unexpected failures (5xx) are actual errors that need investigation.
-        if (statusCode >= 500)
+
+        if (exception is WebhookConcurrentDeliveryException)
+            _logger.LogWarning(exception,
+                "Concurrent webhook delivery on {Method} {Path} — Stripe will retry: {Message}",
+                httpContext.Request.Method,
+                httpContext.Request.Path,
+                exception.Message);
+        else if (statusCode >= 500)
             _logger.LogError(exception,
                 "Unhandled server error on {Method} {Path}: {Message}",
                 httpContext.Request.Method,
@@ -60,7 +67,8 @@ public class GlobalExceptionHandler : IExceptionHandler
             ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
             PaymentProcessingException => (StatusCodes.Status502BadGateway, "Payment Processing Error"),
             Stripe.StripeException => (StatusCodes.Status400BadRequest, "Invalid Webhook Signature"),
-
+            WebhookConcurrentDeliveryException => (StatusCodes.Status503ServiceUnavailable,
+                "Concurrent Webhook Delivery"),
 
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid Argument"),
