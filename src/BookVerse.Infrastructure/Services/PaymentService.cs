@@ -163,17 +163,24 @@ public class PaymentService : IPaymentService
                     return;
                 }
 
-                if (order.PaymentEventProcessedAtUtc.HasValue &&
-                    parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
-                {
-                    _logger.LogWarning(
-                        "Stale PaymentIntentSucceeded ignored for order {OrderNumber}: " +
-                        "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
-                        order.OrderNumber,
-                        parsedEvent.EventCreatedAtUtc,
-                        order.PaymentEventProcessedAtUtc.Value);
-                    return;
-                }
+            if (order.PaymentEventProcessedAtUtc.HasValue &&
+                parsedEvent.EventCreatedAtUtc < order.PaymentEventProcessedAtUtc.Value)
+            {
+                _logger.LogWarning(
+                    "Stale PaymentIntentSucceeded ignored for order {OrderNumber}: " +
+                    "event at {EventTime:u} predates last payment update at {LastUpdate:u}",
+                    order.OrderNumber,
+                    parsedEvent.EventCreatedAtUtc,
+                    order.PaymentEventProcessedAtUtc.Value);
+                return;
+            }
+
+            order.PaymentStatus = PaymentStatus.Completed;
+            order.Status = OrderStatus.Processing;
+            order.PaymentEventProcessedAtUtc = parsedEvent.EventCreatedAtUtc;
+            _unitOfWork.Orders.Update(order);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 order.PaymentStatus = PaymentStatus.Completed;
                 order.Status = OrderStatus.Processing;
